@@ -29,7 +29,7 @@ class Versioning(Tool, ABC):
         :param category: Tool belongs to this category.
         """
         super().__init__(name, exec_name, category,
-                         availablility_option="help")
+                         availability_option="help")
 
 
 # =============================================================================
