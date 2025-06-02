@@ -7,9 +7,11 @@
 """This file contains the base class for any Linker.
 """
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
-from typing import cast, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import warnings
 
 from fab.tools.category import Category
@@ -18,39 +20,39 @@ from fab.tools.tool import CompilerSuiteTool
 
 
 class Linker(CompilerSuiteTool):
-    '''This is the base class for any Linker. If a compiler is specified,
-    its name, executable, and compile suite will be used for the linker (if
-    not explicitly set in the constructor).
+    '''This is the base class for any Linker. It takes an existing compiler
+    instance as parameter, and optional another linker. The latter is used
+    to get linker settings - for example, linker-mpif90-gfortran will use
+    mpif90-gfortran as compiler (i.e. to test if it is available and get
+    compilation flags), and linker-gfortran as linker. This way a user
+    only has to specify linker flags in the most basic class (gfortran),
+    all other linker wrapper will inherit the settings.
 
-    :param name: the name of the linker.
-    :param exec_name: the name of the executable.
-    :param suite: optional, the name of the suite.
-    :param compiler: optional, a compiler instance
-    :param output_flag: flag to use to specify the output name.
+    :param compiler: a compiler instance
+    :param linker: an optional linker instance
+    :param name: name of the linker
+
+    :raises RuntimeError: if both compiler and linker are specified.
+    :raises RuntimeError: if neither compiler nor linker is specified.
     '''
 
-    # pylint: disable=too-many-arguments
-    def __init__(self, name: Optional[str] = None,
-                 exec_name: Optional[str] = None,
-                 suite: Optional[str] = None,
-                 compiler: Optional[Compiler] = None,
-                 output_flag: str = "-o"):
-        if (not name or not exec_name or not suite) and not compiler:
-            raise RuntimeError("Either specify name, exec name, and suite "
-                               "or a compiler when creating Linker.")
-        # Make mypy happy, since it can't work out otherwise if these string
-        # variables might still be None :(
-        compiler = cast(Compiler, compiler)
-        if not name:
-            name = compiler.name
-        if not exec_name:
-            exec_name = compiler.exec_name
-        if not suite:
-            suite = compiler.suite
-        self._output_flag = output_flag
-        super().__init__(name, exec_name, suite, Category.LINKER)
+    def __init__(self, compiler: Compiler,
+                 linker: Optional[Linker] = None,
+                 name: Optional[str] = None):
+
         self._compiler = compiler
-        self.flags.extend(os.getenv("LDFLAGS", "").split())
+        self._linker = linker
+
+        if not name:
+            name = f"linker-{compiler.name}"
+
+        super().__init__(
+            name=name,
+            exec_name=compiler.exec_name,
+            suite=self.suite,
+            category=Category.LINKER)
+
+        self.add_flags(os.getenv("LDFLAGS", "").split())
 
         # Maintain a set of flags for common libraries.
         self._lib_flags: Dict[str, List[str]] = {}
@@ -58,20 +60,35 @@ class Linker(CompilerSuiteTool):
         self._pre_lib_flags: List[str] = []
         self._post_lib_flags: List[str] = []
 
+    def check_available(self) -> bool:
+        ''':returns: whether this linker is available by asking the wrapped
+            linker or compiler.
+        '''
+        return self._compiler.check_available()
+
+    @property
+    def suite(self) -> str:
+        ''':returns: the suite this linker belongs to by getting it from
+            the wrapped compiler.'''
+        return self._compiler.suite
+
     @property
     def mpi(self) -> bool:
-        ''':returns: whether the linker supports MPI or not.'''
+        ''':returns" whether this linker supports MPI or not by checking
+            with the wrapped compiler.'''
         return self._compiler.mpi
 
-    def check_available(self) -> bool:
-        '''
-        :returns: whether the linker is available or not. We do this
-            by requesting the linker version.
-        '''
-        if self._compiler:
-            return self._compiler.check_available()
+    @property
+    def openmp(self) -> bool:
+        ''':returns: whether this linker supports OpenMP or not by checking
+            with the wrapped compiler.'''
+        return self._compiler.openmp
 
-        return super().check_available()
+    @property
+    def output_flag(self) -> str:
+        ''':returns: the flag that is used to specify the output name.
+        '''
+        return self._compiler.output_flag
 
     def get_lib_flags(self, lib: str) -> List[str]:
         '''Gets the standard flags for a standard library
@@ -85,6 +102,10 @@ class Linker(CompilerSuiteTool):
         try:
             return self._lib_flags[lib]
         except KeyError:
+            # If a lib is not defined here, but this is a wrapper around
+            # another linker, return the result from the wrapped linker
+            if self._linker:
+                return self._linker.get_lib_flags(lib)
             raise RuntimeError(f"Unknown library name: '{lib}'")
 
     def add_lib_flags(self, lib: str, flags: List[str],
@@ -118,6 +139,51 @@ class Linker(CompilerSuiteTool):
         '''
         self._post_lib_flags.extend(flags)
 
+    def get_pre_link_flags(self) -> List[str]:
+        '''Returns the list of pre-link flags. It will concatenate the
+        flags for this instance with all potentially wrapped linkers.
+        This wrapper's flag will come first - the assumption is that
+        the pre-link flags are likely paths, so we need a wrapper to
+        be able to put a search path before the paths from a wrapped
+        linker.
+
+        :returns: List of pre-link flags of this linker and all
+            wrapped linkers
+        '''
+        params: List[str] = []
+        if self._pre_lib_flags:
+            params.extend(self._pre_lib_flags)
+        if self._linker:
+            # If we are wrapping a linker (e.g. linker-mpif90-gfortran
+            # wrapping linker-gfortran), get the wrapped linker's
+            # pre-link flags and append them to the end. In the example
+            # this means that any flags from linker-mpif90-gfortran come
+            # before any flags from linker-gfortran, which makes sure
+            # that a wrapper can insert new/different search paths
+            # (i.e. -L directives) before the wrapper - allowing a
+            # wrapper to overwrite libraries from.
+            params.extend(self._linker.get_pre_link_flags())
+        return params
+
+    def get_post_link_flags(self) -> List[str]:
+        '''Returns the list of post-link flags. It will concatenate the
+        flags for this instance with all potentially wrapped linkers.
+        This wrapper's flag will be added to the end.
+
+        :returns: List of post-link flags of this linker and all
+            wrapped linkers
+        '''
+        params: List[str] = []
+        if self._linker:
+            # If we are wrapping a linker, get the wrapped linker's
+            # post-link flags and add them first (so this linker
+            # wrapper's settings come after the setting from the
+            # wrapped linker).
+            params.extend(self._linker.get_post_link_flags())
+        if self._post_lib_flags:
+            params.extend(self._post_lib_flags)
+        return params
+
     def link(self, input_files: List[Path], output_file: Path,
              openmp: bool,
              libs: Optional[List[str]] = None) -> str:
@@ -131,21 +197,22 @@ class Linker(CompilerSuiteTool):
 
         :returns: the stdout of the link command
         '''
-        if self._compiler:
-            # Create a copy:
-            params = self._compiler.flags[:]
-            if openmp:
-                params.append(self._compiler.openmp_flag)
-        else:
-            params = []
+
+        params: List[Union[str, Path]] = []
+
+        params.extend(self._compiler.flags)
+
+        if openmp:
+            params.append(self._compiler.openmp_flag)
+
         # TODO: why are the .o files sorted? That shouldn't matter
         params.extend(sorted(map(str, input_files)))
+        params.extend(self.get_pre_link_flags())
 
-        if self._pre_lib_flags:
-            params.extend(self._pre_lib_flags)
         for lib in (libs or []):
             params.extend(self.get_lib_flags(lib))
-        if self._post_lib_flags:
-            params.extend(self._post_lib_flags)
-        params.extend([self._output_flag, str(output_file)])
+
+        params.extend(self.get_post_link_flags())
+        params.extend([self.output_flag, str(output_file)])
+
         return self.run(params)
