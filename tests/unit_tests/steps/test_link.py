@@ -4,7 +4,8 @@
 #  which you should have received as part of this distribution
 # ##############################################################################
 
-'''This module tests the linking step.
+'''
+Tests linking an executable.
 '''
 
 from pathlib import Path
@@ -21,7 +22,7 @@ import pytest
 class TestLinkExe:
     '''Test class for linking an executable.
     '''
-    def test_run(self, tool_box: ToolBox, mock_fortran_compiler):
+    def test_run(self, tool_box: ToolBox):
         '''Ensure the command is formed correctly, with the flags at the
         end and that environment variable FFLAGS is picked up.
         '''
@@ -31,6 +32,7 @@ class TestLinkExe:
             tool_box=tool_box,
             mpi=False,
             openmp=False,
+            profile="default"
         )
         config.artefact_store[ArtefactSet.OBJECT_FILES] = \
             {'foo': {'foo.o', 'bar.o'}}
@@ -48,8 +50,10 @@ class TestLinkExe:
                                             output_flag=None, openmp_flag=None)
 
             linker = Linker(compiler=mock_compiler)
-            # Mark the linker as available to it can be added to the tool box
+            # Mark the linker as available so it can be added to the tool box
             linker._is_available = True
+            mock_compiler.define_profile("default")
+            linker.define_profile("default")
 
             # Add a custom library to the linker
             linker.add_lib_flags('mylib', ['-L/my/lib', '-lmylib'])

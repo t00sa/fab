@@ -79,7 +79,6 @@ class ToolRepository(dict):
         # allow a shell to be used in Python's subprocess.
         for shell_name in ["sh"]:
             self.add_tool(Shell(shell_name))
-            self.get_tool(Category.SHELL, shell_name)
 
         # Now create the potential mpif90 and Cray ftn wrapper
         all_fc = self[Category.FORTRAN_COMPILER][:]

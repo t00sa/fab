@@ -12,7 +12,6 @@ from fparser.two.utils import walk  # type: ignore
 from fab.parse import AnalysedFile
 from fab.build_config import BuildConfig
 from fab.parse.fortran_common import FortranAnalyserBase, logger, _typed_child
-
 from fab.util import by_type
 
 
