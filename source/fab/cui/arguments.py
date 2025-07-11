@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+##############################################################################
+# (c) Crown copyright Met Office. All rights reserved.
+# For further details please refer to the file COPYRIGHT
+# which you should have received as part of this distribution
+##############################################################################
+
+"""
+Fab command line argument parser.
+"""
+
+import argparse
+import logging
+import os
+from pathlib import Path
+
+# from typing import Any, Sequence
+
+# from .. import __version__ as fab_version
+
+
+# FIXME: placeholder
+def make_logger(name, what):
+    return logging.getLogger(f"{name}.{what}")
+
+
+def setup_logging(*args):
+
+    logging.basicConfig(level=logging.DEBUG)
+
+
+def full_path_type(opt: str) -> Path:
+    """Path with expanded usernames and resolved symlinks.
+
+    :param str opt: command line option
+    :return: a fully resolved Path instance
+    """
+
+    return Path(opt).expanduser().resolve()
+
+
+class FabArgumentParser(argparse.ArgumentParser):
+    """Fab command argument parser."""
+
+    def __init__(self, *args, **kwargs):
+
+        version = kwargs.pop("version", None)
+        self.fabfile = full_path_type(kwargs.pop("fabfile", "FabFile"))
+
+        if "usage" not in kwargs:
+            # Default to a simplified usage line
+            kwargs["usage"] = "%(prog)s [--file FILE] [options]"
+
+        super().__init__(*args, **kwargs)
+
+        if self.prog == "__main__.py" and kwargs.get("prog", None) is None:
+            # Try to pick up a better program name from the environment
+            # or just use a default string
+            self.prog = os.environ.get("__PROGNAME", "fab")
+
+        # self.version = version
+        # self.register("action", "version", _FabVersionAction)
+        self._have_logging = False
+        self._setup_needed = True
+
+    def _parser_wrapper(func):
+        """Decorator to wrap to apply arguments and checks.
+
+        Decorator which ensures some arguments are added before the
+        first of any main parser calls - because the can potentially
+        be called more than once.  These are added at the point where
+        the parser is called to allow the user to override them.
+
+        Always run some Namespace checks after the options have been
+        parsed and then return the results.
+        """
+
+        def inner(self, *args, **kwargs):
+
+            if self._setup_needed:
+                # Carry out setup actions needed only once
+                self._setup_needed = False
+                self._add_location_group()
+                self._add_verbose_group()
+
+            result = func(self, *args, **kwargs)
+
+            if isinstance(result, argparse.Namespace):
+                # parse_args
+                namespace = result
+            elif isinstance(result, tuple) and isinstance(
+                result[0], argparse.Namespace
+            ):
+                # parse_known_args
+                namespace = result[0]
+            else:
+                raise ValueError("invalid return value from wrapped function")
+
+            # Save the name used to refer to the current program
+            namespace._progname = self.prog
+
+            self._check_fabfile(namespace)
+            self._configure_logging(namespace)
+
+            return result
+
+        return inner
+
+    def _add_location_group(self):
+        """Add project, workspace, and fabfile args."""
+        group = self.add_argument_group("fab location arguments")
+
+        self._add_fabfile_argument(group)
+
+        group.add_argument(
+            "--project", type=str, metavar="NAME", help="name to assign to the project"
+        )
+
+        group.add_argument(
+            "--workspace",
+            type=full_path_type,
+            metavar="DIR",
+            default=os.getenv("FAB_WORKSPACE", "~/fab-workspace"),
+            help="location of working space (default: %(default)s)",
+        )
+
+    def _add_verbose_group(self):
+        """Add --verbose argument if not present."""
+
+        # FIXME: allow the output group to be extended?
+        # Create a logging group
+        group = self.add_argument_group("fab output arguments")
+
+        if (
+            "--debug" not in self._option_string_actions
+            and "-d" not in self._option_string_actions
+        ):
+            # Add a logging option
+            group.add_argument(
+                "-d",
+                "--debug",
+                action="count",
+                help="increase the amount of fab debug output",
+            )
+
+        if (
+            "--verbose" not in self._option_string_actions
+            and "-v" not in self._option_string_actions
+        ):
+            # Add a logging option
+            group.add_argument(
+                "-v",
+                "--verbose",
+                action="count",
+                help="increase the amount of build output",
+            )
+
+        # Add a quiet option to suppress all/most output
+        if (
+            "--quiet" not in self._option_string_actions
+            and "-q" not in self._option_string_actions
+        ):
+            # Add a logging option
+            group.add_argument(
+                "-q",
+                "--quiet",
+                action="store_true",
+                help="do not produce much output",
+            )
+
+    def _configure_logging(self, namespace):
+
+        if self._have_logging:
+            return
+
+        setup_logging(
+            getattr(namespace, "verbose", None),
+            getattr(namespace, "debug", None),
+            getattr(namespace, "quiet", False),
+        )
+
+        logger = make_logger(__name__, "system")
+        logger.debug("command line arguments are %s", namespace)
+
+        self._have_logging = True
+
+    def _add_fabfile_argument(self, section):
+        """Add a --file argument to the target section.
+
+        The --file argument needs to be added to both the core parser
+        and to the fabfile-only parser.
+
+        :param section: a parser or an argument section
+        """
+
+        section.add_argument(
+            "--file",
+            type=full_path_type,
+            metavar="FILE",
+            help=f"fab build script (default: {self.fabfile})",
+        )
+
+    def _check_fabfile(self, namespace):
+        """Check the fabfile status.
+
+        If a fabfile has been specified by the user, raise an error if
+        it does not exist.
+
+        If no fabfile has been given, check the default location.  If
+        it does not exist, do not raise an error, but also set the
+        zero config mode.
+        """
+
+        namespace.zero_config = False
+
+        if (
+            hasattr(namespace, "file")
+            and namespace.file is not None
+            and not namespace.file.is_file()
+        ):
+            self.error(f"fab file does not exist: '{namespace.file}'")
+
+        elif (hasattr(namespace, "file") and namespace.file is None) or not hasattr(
+            namespace, "file"
+        ):
+            # Check for a default fabfile in the current directory
+            if self.fabfile.is_file():
+                namespace.file = self.fabfile
+            else:
+                namespace.zero_config = True
+
+        else:
+            # No file is available - which should happen - so fall
+            # back on zero-config mode
+            namespace.zero_config = True
+
+    def parse_fabfile_only(self, *args, **kwargs):
+        """Only attempt to pass the fabfile location.
+
+        Use a separate parser instance to extract nothing but the
+        --file location from the command line.  Ignore errors and do
+        not produce a help message - these should be handled by a
+        second parse attempt once any additional options from the
+        FabFile have been added.
+
+        :return: Path instance or None
+        """
+
+        # FIXME: should this actually return a namespace?
+
+        # Create a fresh parser and add the file argument
+        file_only = argparse.ArgumentParser(add_help=False, exit_on_error=False)
+        self._add_fabfile_argument(file_only)
+
+        try:
+            args, rest = file_only.parse_known_args(*args, **kwargs)
+        except argparse.ArgumentError:
+            args = argparse.Namespace(file=None)
+
+        self._check_fabfile(args)
+
+        return args.file
+
+    @_parser_wrapper
+    def parse_args(self, *args, **kwargs):
+
+        return super().parse_args(*args, **kwargs)
+
+    @_parser_wrapper
+    def parse_known_args(self, *args, **kwargs):
+
+        return super().parse_known_args(*args, **kwargs)
