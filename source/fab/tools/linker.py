@@ -51,7 +51,7 @@ class Linker(CompilerSuiteTool):
 
         super().__init__(
             name=name,
-            exec_name=compiler.exec_name,
+            exec_name=compiler.exec_path,
             suite=self.suite,
             category=Category.LINKER)
 
@@ -117,7 +117,8 @@ class Linker(CompilerSuiteTool):
         :returns: the ProfileFlags for the given profile, combined
             from the wrapped compiler and this wrapper.
 
-        :param profile: the profile to use.'''
+        :param profile: the profile to use.
+        '''
         if self._linker:
             flags = self._linker.get_profile_flags(profile)[:]
         else:

@@ -125,20 +125,23 @@ def test_processing_errors_without_api(fake_process: FakeProcess) -> None:
                          Path('x90file'),
                          api=None,
                          psy_file=Path('psy_file'))
-    assert str(err.value) == "PSyclone called without api, but psy_file is specified."
+    assert (str(err.value) == "PSyclone called without api, but psy_file "
+                              "is specified.")
 
     with raises(RuntimeError) as err:
         psyclone.process(config,
                          Path('x90file'),
                          api=None,
                          alg_file=Path('alg_file'))
-    assert str(err.value) == "PSyclone called without api, but alg_file is specified."
+    assert (str(err.value) == "PSyclone called without api, but alg_file is "
+                              "specified.")
 
     with raises(RuntimeError) as err:
         psyclone.process(config,
                          Path('x90file'),
                          api=None)
-    assert str(err.value) == "PSyclone called without api, but transformed_file is not specified."
+    assert (str(err.value) == "PSyclone called without api, but "
+                              "transformed_file is not specified.")
 
 
 @mark.parametrize("api", ["dynamo0.3", "lfric"])

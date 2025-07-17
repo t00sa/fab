@@ -8,9 +8,10 @@ Exercises
 """
 from os import walk as os_walk
 from pathlib import Path
+from pyfakefs.fake_filesystem import FakeFilesystem
 from typing import List
 
-from pytest import raises, warns
+from pytest import raises, warns, WarningsRecorder
 
 from fab.artefacts import ArtefactSet
 from fab.build_config import BuildConfig
@@ -22,7 +23,7 @@ class TestRootIncFiles:
     """
     Tests include files are handled correctly.
     """
-    def test_vanilla(self, tmp_path: Path) -> None:
+    def test_vanilla(self, tmp_path: Path, recwarn: WarningsRecorder) -> None:
         """
         Tests include files is coped to work directory.
         """
@@ -34,15 +35,24 @@ class TestRootIncFiles:
         config = BuildConfig('proj', ToolBox())
         config.artefact_store[ArtefactSet.INITIAL_SOURCE] = inc_files
 
-        with warns(UserWarning,
-                   match="_metric_send_conn not set, cannot send metrics"), \
-             warns(DeprecationWarning,
-                   match="RootIncFiles is deprecated as .inc files are due to be removed."):
-            root_inc_files(config)
+        # Nested pytest.warns() do not work as expected to catch two warnings:
+        # one user warning and one deprecation warning. So use recwarn:
+        root_inc_files(config)
+
+        assert len(recwarn) == 2
+        user_warning = recwarn.pop(UserWarning)
+        assert ("_metric_send_conn not set, cannot send metrics" ==
+                str(user_warning.message))
+        dep_warning = recwarn.pop(DeprecationWarning)
+        assert ("RootIncFiles is deprecated as .inc files are due to be "
+                "removed." == str(dep_warning.message))
+
         assert (config.build_output / inc_files[0]).read_text() \
             == "Some include file."
 
-    def test_skip_output_folder(self, stub_tool_box: ToolBox, fs) -> None:
+    def test_skip_output_folder(self, stub_tool_box: ToolBox,
+                                fs: FakeFilesystem,
+                                recwarn: WarningsRecorder) -> None:
         """
         Tests files already in output directory not copied.
         """
@@ -54,17 +64,24 @@ class TestRootIncFiles:
                      config.build_output / 'fab.inc']
         config.artefact_store[ArtefactSet.INITIAL_SOURCE] = inc_files
 
-        with warns(UserWarning,
-                   match="_metric_send_conn not set, cannot send metrics"), \
-             warns(DeprecationWarning,
-                   match="RootIncFiles is deprecated as .inc files are due to be removed."):
-            root_inc_files(config)
-        #
-        # It's not clear why there is an unexepcted temporary directory which
-        # needs to be ignored.
-        #
-        # ToDo: Find out where /tmp is coming from and stop it.
-        #
+        root_inc_files(config)
+        assert len(recwarn) == 2
+        user_warning = recwarn.pop(UserWarning)
+        assert ("_metric_send_conn not set, cannot send metrics" in
+                str(user_warning.message))
+        dep_warning = recwarn.pop(DeprecationWarning)
+        assert ("RootIncFiles is deprecated as .inc files are due to be "
+                "removed." == str(dep_warning.message))
+
+        # From https://pytest-pyfakefs.readthedocs.io/en/stable/
+        # troubleshooting.html#os-temporary-directories  :
+        #   As pyfakefs does not fake the tempfile module (as described above),
+        #   a temporary directory is required to ensure that tempfile works
+        #   correctly, e.g., that tempfile.gettempdir() will return a valid
+        #   value. This means that any newly created fake file system will
+        #   always have either a directory named /tmp when running on POSIX
+        #   systems...
+        # So we need to ignore /tmp:
         filetree: List[Path] = []
         for path, _, files in os_walk('/'):
             for file in files:
@@ -74,7 +91,8 @@ class TestRootIncFiles:
         assert sorted(filetree) == [Path('/fab/proj/build_output/bar.inc'),
                                     Path('/foo/source/bar.inc')]
 
-    def test_name_clash(self, stub_tool_box: ToolBox, fs) -> None:
+    def test_name_clash(self, stub_tool_box: ToolBox,
+                        fs: FakeFilesystem) -> None:
         """
         Tests duplicate file leaf names.
         """

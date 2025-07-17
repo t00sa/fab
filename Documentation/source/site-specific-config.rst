@@ -60,24 +60,6 @@ New tools can easily be created, look at
 created by providing a different set of parameters in the
 constructor.
 
-This also allows compiler wrappers to be easily defined. For example,
-if you want to use `mpif90` as compiler, which is a MPI-specific
-wrapper for `ifort`, you can create this class as follows:
-
-.. code-block::
-    :linenos:
-    :caption: Compiler wrapper
-
-    from fab.tools import Ifort
-
-    class MpiF90(Ifort):
-        '''A simple compiler wrapper'''
-        def __init__(self):
-            super().__init__(name="mpif90-intel",
-                             exec_name="mpif90")
-
-.. note:: In `ticket 312 <https://github.com/metomi/fab/issues/312>`_ a better
-        implementation of compiler wrapper will be implemented.
 
 Tool Repository
 ===============

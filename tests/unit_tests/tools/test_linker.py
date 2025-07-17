@@ -190,29 +190,6 @@ def test_linker_add_lib_flags_overwrite_silent(stub_linker: Linker) -> None:
     result = stub_linker.get_lib_flags("customlib")
     assert result == ["-t", "-b"]
 
-    def test_linker_remove_lib_flags(self,
-                                     stub_c_compiler: CCompiler) -> None:
-        """
-        Tests removing library not known to linker.
-        """
-        linker = Linker(stub_c_compiler)
-        linker.remove_lib_flags("netcdf")  # type: ignore[attr-defined]
-
-        with raises(RuntimeError) as err:
-            linker.get_lib_flags("netcdf")
-        assert str(err.value).startswith("Unknown library name: 'netcdf'")
-
-    def test_remove_lib_flags_unknown(self,
-                                      stub_c_compiler: CCompiler) -> None:
-        """
-        Tests silent removal of unknown library.
-        """
-        linker = Linker(stub_c_compiler)
-        linker.remove_lib_flags("unknown")  # type: ignore[attr-defined]
-        #
-        # The test here is that no exception is thrown. Since the library
-        # was never in the list to start with no `assert` is possible.
-
 
 class TestLinkerLinking:
     def test_c(self, stub_c_compiler: CCompiler,
@@ -397,7 +374,7 @@ def test_linker_inheriting() -> None:
 
     with raises(RuntimeError) as err:
         wrapper_linker.get_lib_flags("does_not_exist")
-    assert "Unknown library name: 'does_not_exist'" in str(err.value)
+    assert str(err.value) == "Unknown library name: 'does_not_exist'"
 
 
 def test_linker_profile_flags_inheriting(stub_c_compiler):
@@ -409,6 +386,7 @@ def test_linker_profile_flags_inheriting(stub_c_compiler):
                                        exec_name="exec_name")
     linker = Linker(compiler_wrapper)
     linker_wrapper = Linker(compiler_wrapper, linker=linker)
+
     count = 0
     for compiler in [stub_c_compiler, compiler_wrapper]:
         compiler.define_profile("base")

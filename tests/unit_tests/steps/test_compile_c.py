@@ -89,7 +89,8 @@ class TestCompileC:
                                       "cannot send metrics"):
             compile_c(config=config,
                       path_flags=[AddFlags(match='$source/*',
-                                           flags=['-I', 'foo/include', '-Dhello'])])
+                                           flags=['-I', 'foo/include',
+                                                  '-Dhello'])])
 
         # ensure it created the correct artefact collection
         assert config.artefact_store[ArtefactSet.OBJECT_FILES] == {
