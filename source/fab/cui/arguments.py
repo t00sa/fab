@@ -70,6 +70,7 @@ class FabArgumentParser(argparse.ArgumentParser):
         self._have_logging = False
         self._setup_needed = True
 
+    @staticmethod
     def _parser_wrapper(func):
         """Decorator to wrap to apply arguments and checks.
 
