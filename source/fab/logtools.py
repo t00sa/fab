@@ -86,7 +86,9 @@ class FabLogFilter(logging.Filter):
     output seen by the user.
     """
 
-    def __init__(self, build_level: int, system_level: int, quiet=False):
+    def __init__(
+        self, build_level: Optional[int], system_level: Optional[int], quiet=False
+    ):
         super().__init__()
         self.build_level = build_level
         self.system_level = system_level
