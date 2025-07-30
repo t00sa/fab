@@ -10,6 +10,7 @@ Unit tests for fab.logtools.
 
 
 import logging
+from io import StringIO
 from fab.logtools import make_logger, make_loggers, setup_logging, setup_file_logging
 
 import pytest
@@ -53,6 +54,7 @@ class TestCreateLoggers:
 
 
 class TestSetupLogging:
+    """Test the setup_logging() function with range of settings."""
 
     @pytest.mark.parametrize(
         "blevel,slevel,expected",
@@ -65,12 +67,15 @@ class TestSetupLogging:
         ],
         ids=["nothing", "build info", "build debug", "system info", "system debug"],
     )
-    def test_levels(self, blevel, slevel, expected, caplog, capsys):
+    def test_levels(self, blevel, slevel, expected, caplog):
+        """Test the various different log level combinations."""
+
+        messages = StringIO()
 
         build_logger = logging.getLogger("fab.build")
         system_logger = logging.getLogger("fab.system")
 
-        setup_logging(blevel, slevel, False)
+        setup_logging(blevel, slevel, False, messages)
         build_logger.info("build info")
         build_logger.debug("build debug")
 
@@ -79,49 +84,75 @@ class TestSetupLogging:
 
         count = 0
         for entry in expected:
-            if entry in caplog.text:
+            if entry in messages.getvalue():
                 count += 1
 
         assert count == len(expected)
 
-    # FIXME: this needs to capture the output from the stream handler
-    # and confirm that it has been filtered correctly.  Using
-    # caplog.text gets all the messages, not just the one that have
-    # made it to the output handler.
-    #
-    # @pytest.mark.parametrize(
-    #     "blevel,slevel",
-    #     [
-    #         (0, 0),
-    #         (1, 0),
-    #         (2, 0),
-    #         (0, 1),
-    #         (0, 2),
-    #     ],
-    #     ids=["nothing", "build info", "build debug", "system info", "system debug"],
-    # )
-    # def test_quiet(self, blevel, slevel, caplog):
+    @pytest.mark.parametrize(
+        "blevel,slevel",
+        [
+            (0, 0),
+            (1, 0),
+            (2, 0),
+            (0, 1),
+            (0, 2),
+        ],
+        ids=["nothing", "build info", "build debug", "system info", "system debug"],
+    )
+    def test_quiet(self, blevel, slevel, caplog):
+        """Check quiet mode suppresses everything except errors.
 
-    #     build_logger = logging.getLogger("fab.build")
-    #     system_logger = logging.getLogger("fab.system")
+        This captures the output from the stream handler and confirm
+        that it has been filtered correctly using a StringIO instance
+        to intercept the output.
+        """
 
-    #     setup_logging(blevel, slevel, True)
-    #     build_logger.warning("build warning")
-    #     build_logger.info("build info")
-    #     build_logger.debug("build debug")
+        build_logger = logging.getLogger("fab.build")
+        system_logger = logging.getLogger("fab.system")
 
-    #     system_logger.info("system info")
-    #     system_logger.debug("system debug")
+        messages = StringIO()
 
-    #     assert "build warning" in caplog.text
-    #     assert "build info" not in caplog.text
-    #     assert "build debug" not in caplog.text
-    #     assert "system info" not in caplog.text
-    #     assert "system debug" not in caplog.text
+        setup_logging(blevel, slevel, True, messages)
+        build_logger.error("build error")
+        build_logger.warning("build warning")
+        build_logger.info("build info")
+        build_logger.debug("build debug")
+
+        system_logger.error("system error")
+        system_logger.warning("system warning")
+        system_logger.info("system info")
+        system_logger.debug("system debug")
+
+        text = messages.getvalue()
+
+        assert "build error" in text
+        assert "build warning" not in text
+        assert "build info" not in text
+        assert "build debug" not in text
+
+        assert "system error" in text
+        assert "system warning" not in text
+        assert "system info" not in text
+        assert "system debug" not in text
 
 
 def test_file_logging(tmp_path, caplog):
+    """Check that file logging works as expected."""
 
     logfile = tmp_path / "subdir" / "test.log"
     setup_file_logging(logfile)
+
+    fab = logging.getLogger("fab.build")
+    fab.setLevel(logging.DEBUG)
+
+    fab.info("build info")
+    fab.debug("build debug")
+
     assert logfile.is_file()
+
+    with logfile.open("r") as fd:
+        lines = "".join(fd.readlines())
+
+    assert "build info" in lines
+    assert "build debug" in lines

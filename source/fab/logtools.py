@@ -8,12 +8,14 @@
 Logging tools for the fab framework.
 """
 
+import sys
 import logging
 import inspect
 from pathlib import Path
+from typing import Optional
 
 
-def make_logger(feature, offset=1):
+def make_logger(feature: str, offset: int = 1):
     """Create a hierarchical logger.
 
     The name of the logger is based on the module name of the caller
@@ -24,7 +26,9 @@ def make_logger(feature, offset=1):
     appended.  If the logger is created from the __init__ method of a
     class, the name of the class is used in place of a function.
 
-    :param int offset: the numer of frames to skip.  Defaults to 1.
+    :param feature: the name of the logging feature.  Typically
+        either build or system.
+    :param offset: the number of frames to skip.  Defaults to 1.
     :return: a logging.Logger instance.
     """
 
@@ -33,7 +37,10 @@ def make_logger(feature, offset=1):
     frame = finfo.frame
     code = frame.f_code
     module = inspect.getmodule(frame)
-    parts = module.__name__.split(".")
+    if module is not None:
+        parts = module.__name__.split(".")
+    else:
+        parts = ["root"]
 
     if (
         finfo.function == "__init__"
@@ -61,12 +68,62 @@ def make_loggers():
     with build and system at the second level of the logging
     hierarchy.  This function is ignored when inspecting the calling
     tree to determine the name to use.
+
+    :returns: tuple containing two logger instances, the first
+        associated with the build hierarchy and the second with the system
+        hierarchy.
     """
 
     return make_logger("build", 2), make_logger("system", 2)
 
 
-def setup_logging(build_level, system_level, quiet=False):
+class FabLogFilter(logging.Filter):
+    """Class to filter log messages from the console stream.
+
+    This filters out specific types of log message based on level
+    criteria and the boolean quiet flag.  This makes it possible to
+    write all log events to a file whilst controlling the amount of
+    output seen by the user.
+    """
+
+    def __init__(self, build_level: int, system_level: int, quiet=False):
+        super().__init__()
+        self.build_level = build_level
+        self.system_level = system_level
+        self.quiet = quiet
+
+    def filter(self, record):
+        """Decide whether to filter a specific log message."""
+
+        if ".build" in record.name:
+            # A build hierarchy message
+            level = self.build_level
+        else:
+            # Assume all other messages are in the system category
+            level = self.system_level
+
+        if self.quiet and record.levelno < logging.ERROR:
+            # Filter out everything except errors in quiet mode
+            return False
+
+        if level <= 0 and record.levelno < logging.WARNING:
+            # Filter out anything below warning
+            return False
+
+        if level == 1 and record.levelno < logging.INFO:
+            # Filter out anything below info
+            return False
+
+        # Log all messages that have made it this far
+        return True
+
+
+def setup_logging(
+    build_level: Optional[int],
+    system_level: Optional[int],
+    quiet=False,
+    iostream=sys.stderr,
+):
     """Setup the fab logging framework.
 
     Set output levels for build log messages and system log messages.
@@ -74,28 +131,23 @@ def setup_logging(build_level, system_level, quiet=False):
     Build messages are purely intended to be used to output
     information about the compile tasks.  System messages should help
     to debug the fab library itself.
+
+    :param build_level: verbosity of output from the build logger
+        hierarchy.  Setting to 0 or None implies a low level of
+        output.
+    :param system_level: verbosity of output from the system logger
+        hierarchy.  Setting to 0 or None implies a low level of
+        output.
+    :param quiet: do not log anything lower than an error to the user
+        output stream.
+    :param iostream: output stream used to log messages.  Defaults to
+        sys.stderr if not specified.  This is particularly useful when
+        testing.
     """
 
-    # Get the hierarchical loggers
+    # Get the hierarchical logger
     fab_logger = logging.getLogger("fab")
-    build_logger = logging.getLogger("fab.build")
-    system_logger = logging.getLogger("fab.system")
-
-    # Set log levels for user-centric build messages
-    if build_level is None or build_level == 0:
-        build_logger.setLevel(logging.WARNING)
-    elif build_level == 1:
-        build_logger.setLevel(logging.INFO)
-    else:
-        build_logger.setLevel(logging.DEBUG)
-
-    # Set log levels of fab framework debug/tracing messages
-    if system_level is None or system_level == 0:
-        system_logger.setLevel(logging.WARNING)
-    elif system_level == 1:
-        system_logger.setLevel(logging.INFO)
-    else:
-        system_logger.setLevel(logging.DEBUG)
+    fab_logger.setLevel(logging.DEBUG)
 
     # Output format includes the module if running in debug mode
     if system_level is None:
@@ -104,22 +156,20 @@ def setup_logging(build_level, system_level, quiet=False):
         formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
 
     # Create a python stream handler and set the formatting
-    stream = logging.StreamHandler()
+    stream = logging.StreamHandler(iostream)
+    stream.addFilter(FabLogFilter(build_level, system_level, quiet))
     stream.setFormatter(formatter)
-
-    # If running in quiet mode, switch off almost everything.
-    # Otherwise rely on the handler settings
-    stream.setLevel(logging.ERROR if quiet else logging.DEBUG)
 
     # Set fab messages to use the stream handler
     fab_logger.addHandler(stream)
 
 
-def setup_file_logging(logfile, parent="root", create=True):
-    """Write log messages to a file.
+def setup_file_logging(logfile: Path, name="root", create=True):
+    """Direct log messages to a named file.
 
     :param logfile: path to the output log
-    :param parent: name of the logger being added
+    :param name: name of the logger hierarchy being added
+    :param create: create the parent directory.  Defaults to True.
     """
 
     logfile = Path(logfile)
@@ -132,4 +182,4 @@ def setup_file_logging(logfile, parent="root", create=True):
     logfh = logging.FileHandler(logfile)
     logfh.setLevel(logging.DEBUG)
     logfh.setFormatter(logfm)
-    logging.getLogger(parent).addHandler(logfh)
+    logging.getLogger(name).addHandler(logfh)
