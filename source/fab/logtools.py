@@ -152,7 +152,7 @@ def setup_logging(
     fab_logger.setLevel(logging.DEBUG)
 
     # Output format includes the module if running in debug mode
-    if system_level is None:
+    if system_level is None or system_level == 0:
         formatter = logging.Formatter("%(asctime)s %(message)s")
     else:
         formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
