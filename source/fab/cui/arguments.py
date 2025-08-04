@@ -25,17 +25,7 @@ from pathlib import Path
 
 from ..util import get_fab_workspace
 from .. import __version__ as fab_version
-
-try:
-    from ..logtools import make_logger, setup_logging
-except ModuleNotFoundError:
-    # Placeholder code.  This can be removed once logtools change has
-    # been merged
-    def make_logger(what):
-        return logging.getLogger(f"fab.{what}")
-
-    def setup_logging(*args):
-        logging.basicConfig(level=logging.DEBUG)
+from ..logtools import make_logger, setup_logging
 
 
 def full_path_type(opt: str) -> Path:
