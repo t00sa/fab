@@ -37,6 +37,52 @@ def full_path_type(opt: str) -> Path:
     return Path(opt).expanduser().resolve()
 
 
+def _parser_wrapper(func):
+    """Decorator to wrap to apply arguments and checks.
+
+    Decorator which ensures some arguments are added before the first
+    of any main parser calls because they can potentially be called
+    more than once.  These are added at the point where the parser is
+    called to allow the user to override them.
+
+    Always run some Namespace checks after the options have been
+    parsed and then return the results.
+
+    The decorator exists outside the class to avoid problems with
+    staticmethods in python < 3.10.
+    """
+
+    def inner(self, *args, **kwargs):
+
+        if self._setup_needed:
+            # Carry out setup actions needed only once
+            self._setup_needed = False
+            self._add_location_group()
+            self._add_output_group()
+            self._add_info_group()
+
+        result = func(self, *args, **kwargs)
+
+        if isinstance(result, argparse.Namespace):
+            # parse_args
+            namespace = result
+        elif isinstance(result, tuple) and isinstance(result[0], argparse.Namespace):
+            # parse_known_args
+            namespace = result[0]
+        else:
+            raise ValueError("invalid return value from wrapped function")
+
+        # Save the name used to refer to the current program
+        namespace._progname = self.prog
+
+        self._check_fabfile(namespace)
+        self._configure_logging(namespace)
+
+        return result
+
+    return inner
+
+
 class FabArgumentParser(argparse.ArgumentParser):
     """Fab command argument parser."""
 
@@ -58,51 +104,6 @@ class FabArgumentParser(argparse.ArgumentParser):
 
         self._have_logging = False
         self._setup_needed = True
-
-    @staticmethod
-    def _parser_wrapper(func):
-        """Decorator to wrap to apply arguments and checks.
-
-        Decorator which ensures some arguments are added before the
-        first of any main parser calls - because the can potentially
-        be called more than once.  These are added at the point where
-        the parser is called to allow the user to override them.
-
-        Always run some Namespace checks after the options have been
-        parsed and then return the results.
-        """
-
-        def inner(self, *args, **kwargs):
-
-            if self._setup_needed:
-                # Carry out setup actions needed only once
-                self._setup_needed = False
-                self._add_location_group()
-                self._add_output_group()
-                self._add_info_group()
-
-            result = func(self, *args, **kwargs)
-
-            if isinstance(result, argparse.Namespace):
-                # parse_args
-                namespace = result
-            elif isinstance(result, tuple) and isinstance(
-                result[0], argparse.Namespace
-            ):
-                # parse_known_args
-                namespace = result[0]
-            else:
-                raise ValueError("invalid return value from wrapped function")
-
-            # Save the name used to refer to the current program
-            namespace._progname = self.prog
-
-            self._check_fabfile(namespace)
-            self._configure_logging(namespace)
-
-            return result
-
-        return inner
 
     def _add_location_group(self):
         """Add project, workspace, and fabfile args."""
