@@ -120,7 +120,7 @@ class FabArgumentParser(argparse.ArgumentParser):
             "--workspace",
             type=full_path_type,
             metavar="DIR",
-            default=get_fab_workspace(),
+            default=get_fab_workspace().expanduser().resolve(),
             help="location of working space (default: %(default)s)",
         )
 

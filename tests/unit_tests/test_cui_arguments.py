@@ -201,7 +201,7 @@ class TestParser:
         "argv,env,result",
         [
             pytest.param(
-                [], None, Path("~/fab-workspace").expanduser().resolve(), id="default"
+                [], None, Path("fab-workspace").expanduser().resolve(), id="default"
             ),
             pytest.param([], "/tmp/fab", Path("/tmp/fab").resolve(), id="environment"),
             pytest.param(
