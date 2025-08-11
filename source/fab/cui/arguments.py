@@ -21,6 +21,7 @@ argument and adds its own arguments.
 import argparse
 import os
 from pathlib import Path
+from typing import Callable
 
 from ..util import get_fab_workspace
 from .. import __version__ as fab_version
@@ -37,8 +38,8 @@ def full_path_type(opt: str) -> Path:
     return Path(opt).expanduser().resolve()
 
 
-def _parser_wrapper(func):
-    """Decorator to wrap to apply arguments and checks.
+def _parser_wrapper(func: Callable) -> Callable:
+    """Decorator to wrap arguments and checks.
 
     Decorator which ensures some arguments are added before the first
     of any main parser calls because they can potentially be called
@@ -177,16 +178,29 @@ class FabArgumentParser(argparse.ArgumentParser):
                 "--version", action="version", version=f"%(prog)s {self.version}"
             )
 
-    def _configure_logging(self, namespace):
+    def _configure_logging(self, namespace: argparse.Namespace):
+        """Configure output logging.
+
+        Set various logging parameters after the first complete parse
+        of the command line arguments.  Check to ensure that the user
+        has not attempted to set both debug and/or verbose options at
+        the same time as using the --quiet flag to suppress console
+        output.
+
+        :param namespace: parsed command line arguments
+        """
 
         if self._have_logging:
             return
 
-        setup_logging(
-            getattr(namespace, "verbose", None),
-            getattr(namespace, "debug", None),
-            getattr(namespace, "quiet", False),
-        )
+        verbose = getattr(namespace, "verbose", None)
+        debug = getattr(namespace, "debug", None)
+        quiet = getattr(namespace, "quiet", False)
+
+        if quiet and (verbose is not None or debug is not None):
+            self.error("--quiet conflicts with debug and verbose settings")
+
+        setup_logging(verbose, debug, quiet)
 
         logger = make_logger("system")
         logger.debug("command line arguments are %s", namespace)
@@ -209,7 +223,7 @@ class FabArgumentParser(argparse.ArgumentParser):
             help=f"fab build script (default: {self.fabfile})",
         )
 
-    def _check_fabfile(self, namespace):
+    def _check_fabfile(self, namespace: argparse.Namespace):
         """Check the fabfile status.
 
         If a fabfile has been specified by the user, raise an error if
@@ -238,12 +252,15 @@ class FabArgumentParser(argparse.ArgumentParser):
         """Only attempt to pass the fabfile location.
 
         Use a separate parser instance to extract nothing but the
-        --file location from the command line.  Ignore errors and do
-        not produce a help message - these should be handled by a
+        --file location from the command line.  Ignore most errors and
+        do not produce a help message - these should be handled by a
         second parse attempt once any additional options from the
         FabFile have been added.
 
-        :return: Namespace containing
+        Only exit with an error if the user has provided a broken
+        --file argument.
+
+        :return: Namespace containing command line arguments
         """
 
         # Create a fresh parser and add the file argument
@@ -251,13 +268,16 @@ class FabArgumentParser(argparse.ArgumentParser):
         self._add_fabfile_argument(file_only)
 
         try:
-            args, rest = file_only.parse_known_args(*args, **kwargs)
-        except argparse.ArgumentError:
-            args = argparse.Namespace(file=None, zero_config=True)
+            nspace, rest = file_only.parse_known_args(*args, **kwargs)
+        except argparse.ArgumentError as err:
+            if err.argument_name == "--file":
+                # Deal with --file problems immediately
+                self.error(str(err))
+            nspace = argparse.Namespace(file=None, zero_config=True)
 
-        self._check_fabfile(args)
+        self._check_fabfile(nspace)
 
-        return args
+        return nspace
 
     @_parser_wrapper
     def parse_args(self, *args, **kwargs):

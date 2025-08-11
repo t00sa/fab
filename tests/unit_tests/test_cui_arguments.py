@@ -92,6 +92,18 @@ class TestFabFile:
         captured = capsys.readouterr()
         assert "error: fab file does not exist" in captured.err
 
+    def test_user_file_missing_arg(self, capsys):
+        """Check missing file name triggers an error."""
+
+        parser = FabArgumentParser()
+
+        with pytest.raises(SystemExit) as exc:
+            parser.parse_fabfile_only(["--file"])
+        assert exc.value.code == 2
+
+        captured = capsys.readouterr()
+        assert "--file: expected one argument" in captured.err
+
     def test_no_help(self):
         """Check there the help option does nothing."""
 
@@ -99,13 +111,6 @@ class TestFabFile:
         args = parser.parse_fabfile_only(["--help"])
         assert isinstance(args, argparse.Namespace)
         assert args.file is None
-
-    def test_no_exit(self):
-        """Check missing argument does not cause an exit."""
-
-        parser = FabArgumentParser()
-        args = parser.parse_fabfile_only(["--file"])
-        assert isinstance(args, argparse.Namespace)
 
 
 class TestParser:
@@ -138,6 +143,7 @@ class TestParser:
         assert isinstance(args, argparse.Namespace)
         assert isinstance(args.file, Path)
         assert args.file.name == "FabFile"
+        assert not args.zero_config
 
     def test_with_alternate_fabfile(self, fs):
         """Defaults with a non-default FabFile name."""
@@ -150,6 +156,7 @@ class TestParser:
         assert isinstance(args, argparse.Namespace)
         assert isinstance(args.file, Path)
         assert args.file.name == "AltFabFile"
+        assert not args.zero_config
 
     @pytest.mark.parametrize(
         "argv,verbose,debug,quiet",
@@ -158,9 +165,6 @@ class TestParser:
             pytest.param(["-ddd"], None, 3, False, id="debug"),
             pytest.param(["-q"], None, None, True, id="quiet"),
             pytest.param(["-vv", "-ddd"], 2, 3, False, id="verbose+debug"),
-            pytest.param(
-                ["-vv", "-ddd", "--quiet"], 2, 3, True, id="verbose+debug+quiet"
-            ),
         ],
     )
     def test_output(self, argv, verbose, debug, quiet):
@@ -172,6 +176,26 @@ class TestParser:
         assert args.verbose == verbose
         assert args.debug == debug
         assert args.quiet == quiet
+
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            pytest.param(["-vv"], id="verbose"),
+            pytest.param(["-ddd"], id="debug"),
+            pytest.param(["-vv", "-ddd"], id="verbose+debug"),
+        ],
+    )
+    def test_outupt_with_quiet(self, argv, capsys):
+        """Check quiet and output options flag up an error."""
+
+        parser = FabArgumentParser()
+
+        with pytest.raises(SystemExit) as exc:
+            parser.parse_args(argv + ["--quiet"])
+        assert exc.value.code == 2
+
+        captured = capsys.readouterr()
+        assert "--quiet conflicts with debug and verbose settings" in captured.err
 
     @pytest.mark.parametrize(
         "argv,env,result",
@@ -188,16 +212,15 @@ class TestParser:
             ),
         ],
     )
-    def test_workspace(self, argv, env, result):
+    def test_workspace(self, argv, env, result, monkeypatch):
         """Check various workspace settings."""
 
         parser = FabArgumentParser()
 
-        # FIXME: use monkeypatch
         if env is None and "FAB_WORKSPACE" in os.environ:
-            del os.environ["FAB_WORKSPACE"]
+            monkeypatch.delenv("FAB_WORKSPACE")
         elif env is not None:
-            os.environ["FAB_WORKSPACE"] = env
+            monkeypatch.setenv("FAB_WORKSPACE", env)
 
         args = parser.parse_args(argv)
 
