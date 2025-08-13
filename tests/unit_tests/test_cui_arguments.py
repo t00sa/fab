@@ -10,14 +10,16 @@ Tests for fab argument parser.
 """
 
 import sys
+import json
 import os
 import argparse
 from pathlib import Path
-from fab.cui.arguments import full_path_type, FabArgumentParser
+from fab.cui.arguments import full_path_type, FabArgumentParser, _FabArgumentCache
 
 import pytest
 from typing import Optional
 from pyfakefs.fake_filesystem import FakeFilesystem
+from unittest.mock import Mock
 
 
 class TestFullPathType:
@@ -214,7 +216,9 @@ class TestParser:
             pytest.param(
                 [], None, Path("fab-workspace").expanduser().resolve(), id="default"
             ),
-            pytest.param([], Path("/tmp/fab"), Path("/tmp/fab").resolve(), id="environment"),
+            pytest.param(
+                [], Path("/tmp/fab"), Path("/tmp/fab").resolve(), id="environment"
+            ),
             pytest.param(
                 ["--workspace", "/run/fab"],
                 Path("/tmp/fab"),
@@ -296,3 +300,163 @@ class TestParser:
         captured = capsys.readouterr()
 
         assert captured.out.startswith("fab ")
+
+
+class TestArgumentCache:
+    """Test the ability to cache and re-load argument values."""
+
+    def test_save_disabled(self, fs: FakeFilesystem):
+        """Test save namespace."""
+
+        cache = _FabArgumentCache()
+        nspace = argparse.Namespace(a=1, b=2, c="xyz")
+
+        cache.cache = False
+        cache._save_namespace(nspace)
+        assert not cache._cache_file.exists()
+
+    def test_save_enabled(self, fs: FakeFilesystem):
+        """Test save namespace."""
+
+        cache = _FabArgumentCache()
+        nspace = argparse.Namespace(a=1, b=2, c="xyz")
+
+        cache.cache = True
+        cache._save_namespace(nspace)
+        assert cache._cache_file.exists()
+
+        with cache._cache_file.open("rt", encoding="utf-8") as fd:
+            values = json.load(fd)
+
+        assert values.get("a", "") == 1
+        assert values.get("b", "") == 2
+        assert values.get("c", "") == "xyz"
+
+        return
+
+    def test_cache_merge_disabled(self):
+
+        cache = _FabArgumentCache()
+        nspace = argparse.Namespace(a=1, b=2, c="xyz")
+
+        cache.cache = True
+        cache._save_namespace(nspace)
+        assert cache._cache_file.exists()
+
+        cache.cache = False
+        result = argparse.Namespace()
+        cache._merge_cached_namespace([], result)
+
+        assert getattr(result, "a", None) is None
+
+    @pytest.mark.parametrize(
+        "kwaction,value,expected",
+        [
+            pytest.param(
+                {"dest": "a", "default": 10, "type": None},
+                5,
+                5,
+                id="user value",
+            ),
+            pytest.param(
+                {"dest": "a", "default": 10, "type": None},
+                None,
+                1,
+                id="cache value",
+            ),
+            pytest.param(
+                {"dest": "a", "default": 10, "type": None},
+                10,
+                1,
+                id="default override",
+            ),
+            pytest.param(
+                {"dest": "b", "type": Path},
+                None,
+                Path("/dir"),
+                id="cache type conversion",
+            ),
+        ],
+    )
+    def test_cache_merge(self, kwaction, value, expected):
+
+        cache = _FabArgumentCache()
+        nspace = argparse.Namespace(a=1, b=Path("/dir"))
+
+        cache.cache = True
+        cache._save_namespace(nspace)
+
+        result = argparse.Namespace()
+        setattr(result, kwaction["dest"], value)
+        cache._merge_cached_namespace([Mock(**kwaction)], result)
+
+        assert getattr(result, kwaction["dest"], "") == expected
+
+
+class TestArgumentCaching:
+    """Test caching with the argument parser."""
+
+    def test_disabled(self, fs: FakeFilesystem):
+
+        parser = FabArgumentParser(cache=False)
+        parser.add_argument("--sarg", type=str)
+        parser.add_argument("--path", type=Path)
+        parser.parse_args(["--sarg=abc", "--path=/foobar"])
+
+        assert not parser._cache_file.is_file()
+
+    def test_enabled(self, fs: FakeFilesystem):
+
+        parser = FabArgumentParser(cache=True)
+        parser.add_argument("--sarg", type=str)
+        parser.add_argument("--path", type=Path)
+        parser.parse_args(["--save-cache", "--sarg=abc", "--path=/foobar"])
+
+        assert parser._cache_file.is_file()
+
+    def test_load(self, fs: FakeFilesystem):
+
+        parser = FabArgumentParser(cache=True)
+        parser.add_argument("--sarg", type=str)
+        parser.add_argument("--path", type=Path)
+        parser.parse_args(["--save-cache", "--sarg=abc", "--path=/foobar"])
+
+        assert parser._cache_file.is_file()
+
+        args = parser.parse_args(["--use-cache"])
+
+        assert hasattr(args, "sarg") and args.sarg == "abc"
+        assert (
+            hasattr(args, "path")
+            and isinstance(args.path, Path)
+            and args.path.name == "foobar"
+        )
+
+    def test_ignore_cache_args(self):
+        """Check caching arguments themselves are not cached."""
+
+        parser = FabArgumentParser(cache=True)
+        parser.add_argument("--sarg", type=str)
+        parser.parse_args(["--save-cache", "--sarg=abc"])
+
+        assert parser._cache_file.is_file()
+
+        args = parser.parse_args(["--use-cache"])
+
+        assert hasattr(args, "sarg") and args.sarg == "abc"
+        assert hasattr(args, "save_cache") and not args.save_cache
+
+    def test_error(self, capsys):
+        """Check a corrupt cache file raises an error."""
+
+        parser = FabArgumentParser(cache=True)
+
+        with parser._cache_file.open("wt", encoding="utf-8") as fd:
+            print("# invalid data", file=fd)
+
+        with pytest.raises(SystemExit) as err:
+            parser.parse_args(["--use-cache"])
+        assert err.value.code == 2
+
+        captured = capsys.readouterr()
+        assert "--use-cache: decode error at line 1 column 1" in captured.err
