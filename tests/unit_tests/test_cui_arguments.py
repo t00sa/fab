@@ -16,6 +16,8 @@ from pathlib import Path
 from fab.cui.arguments import full_path_type, FabArgumentParser
 
 import pytest
+from typing import Optional
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 class TestFullPathType:
@@ -35,7 +37,7 @@ class TestFullPathType:
 class TestFabFile:
     """Check fab --file specific partial parsing."""
 
-    def test_default(self, fs):
+    def test_default(self, fs: FakeFilesystem):
         """Check default with no user arguments."""
 
         fs.create_file("FabFile")
@@ -47,19 +49,28 @@ class TestFabFile:
         assert args.file.name == "FabFile"
         assert not args.zero_config
 
-    def test_alternate(self, fs):
+    @pytest.mark.parametrize(
+        "filename,arg",
+        [
+            pytest.param(Path("FabFile"), None, id="default"),
+            pytest.param(Path("myfile"), "myfile", id="override"),
+        ],
+    )
+    def test_fabfile(
+        self, filename: Path, arg: Optional[str], fs: FakeFilesystem
+    ) -> None:
         """Check specified path with no user arguments."""
 
-        fs.create_file("myfile")
+        fs.create_file(filename)
 
-        parser = FabArgumentParser(fabfile="myfile")
+        parser = FabArgumentParser(fabfile=arg)
         args = parser.parse_fabfile_only([])
         assert isinstance(args, argparse.Namespace)
         assert isinstance(args.file, Path)
-        assert args.file.name == "myfile"
+        assert args.file.name == filename.name
         assert not args.zero_config
 
-    def test_nonexistent_default(self, fs):
+    def test_nonexistent_default(self, fs: FakeFilesystem):
         """Check non-existent default file."""
 
         parser = FabArgumentParser()
@@ -68,7 +79,7 @@ class TestFabFile:
         assert args.file is None
         assert args.zero_config
 
-    def test_user_file(self, fs):
+    def test_user_file(self, fs: FakeFilesystem):
         """Check user specified argument."""
 
         fs.create_file("myfile")
@@ -80,7 +91,7 @@ class TestFabFile:
         assert args.file.name == "myfile"
         assert not args.zero_config
 
-    def test_nonexistent_user_file(self, fs, capsys):
+    def test_nonexistent_user_file(self, fs: FakeFilesystem, capsys):
         """Check non-existent file with user specified argument."""
 
         parser = FabArgumentParser()
@@ -132,7 +143,7 @@ class TestParser:
         assert args.verbose is None
         assert args.quiet is False
 
-    def test_with_default_fabfile(self, fs):
+    def test_with_default_fabfile(self, fs: FakeFilesystem):
         """Defaults where a FabFile exists."""
 
         fs.create_file("FabFile")
@@ -145,7 +156,7 @@ class TestParser:
         assert args.file.name == "FabFile"
         assert not args.zero_config
 
-    def test_with_alternate_fabfile(self, fs):
+    def test_with_alternate_fabfile(self, fs: FakeFilesystem):
         """Defaults with a non-default FabFile name."""
 
         fs.create_file("AltFabFile")

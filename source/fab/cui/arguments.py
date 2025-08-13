@@ -90,7 +90,7 @@ class FabArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
 
         self.version = kwargs.pop("version", str(fab_version))
-        self.fabfile = full_path_type(kwargs.pop("fabfile", "FabFile"))
+        self.fabfile = full_path_type(kwargs.pop("fabfile", "FabFile") or "FabFile")
 
         if "usage" not in kwargs:
             # Default to a simplified usage line
@@ -178,7 +178,7 @@ class FabArgumentParser(argparse.ArgumentParser):
                 "--version", action="version", version=f"%(prog)s {self.version}"
             )
 
-    def _configure_logging(self, namespace: argparse.Namespace):
+    def _configure_logging(self, namespace: argparse.Namespace) -> None:
         """Configure output logging.
 
         Set various logging parameters after the first complete parse
@@ -223,7 +223,7 @@ class FabArgumentParser(argparse.ArgumentParser):
             help=f"fab build script (default: {self.fabfile})",
         )
 
-    def _check_fabfile(self, namespace: argparse.Namespace):
+    def _check_fabfile(self, namespace: argparse.Namespace) -> None:
         """Check the fabfile status.
 
         If a fabfile has been specified by the user, raise an error if
