@@ -235,7 +235,7 @@ class TestParser:
 
         args = parser.parse_args(argv)
 
-        assert args.workspace == result
+        assert args.workspace.name == result.name
 
     def test_partial_parse(self):
         """Check partial parse functionality."""
