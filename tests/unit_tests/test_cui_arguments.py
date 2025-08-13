@@ -231,11 +231,11 @@ class TestParser:
         if env is None and "FAB_WORKSPACE" in os.environ:
             monkeypatch.delenv("FAB_WORKSPACE")
         elif env is not None:
-            monkeypatch.setenv("FAB_WORKSPACE", str(env).resolve())
+            monkeypatch.setenv("FAB_WORKSPACE", str(env))
 
         args = parser.parse_args(argv)
 
-        assert args.workspace.name == result.name
+        assert args.workspace == result
 
     def test_partial_parse(self):
         """Check partial parse functionality."""
