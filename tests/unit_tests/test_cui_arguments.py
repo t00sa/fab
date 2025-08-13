@@ -231,7 +231,7 @@ class TestParser:
         if env is None and "FAB_WORKSPACE" in os.environ:
             monkeypatch.delenv("FAB_WORKSPACE")
         elif env is not None:
-            monkeypatch.setenv("FAB_WORKSPACE", env)
+            monkeypatch.setenv("FAB_WORKSPACE", str(Path(env).resolve()))
 
         args = parser.parse_args(argv)
 
