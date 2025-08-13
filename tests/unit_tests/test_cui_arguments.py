@@ -217,7 +217,7 @@ class TestParser:
             pytest.param([], "/tmp/fab", Path("/tmp/fab").resolve(), id="environment"),
             pytest.param(
                 ["--workspace", "/run/fab"],
-                "/tmp/fab",
+                Path("/tmp/fab"),
                 Path("/run/fab").resolve(),
                 id="argument",
             ),
@@ -231,7 +231,7 @@ class TestParser:
         if env is None and "FAB_WORKSPACE" in os.environ:
             monkeypatch.delenv("FAB_WORKSPACE")
         elif env is not None:
-            monkeypatch.setenv("FAB_WORKSPACE", str(Path(env).resolve()))
+            monkeypatch.setenv("FAB_WORKSPACE", str(env).resolve())
 
         args = parser.parse_args(argv)
 
