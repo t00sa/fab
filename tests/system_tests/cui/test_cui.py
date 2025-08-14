@@ -10,7 +10,7 @@ System tests for the fab command line utility.
 
 import sys
 import pytest
-from fab.cui.__main__ import main
+import fab.cui.__main__
 
 
 class TestArgsHandling:
@@ -20,7 +20,7 @@ class TestArgsHandling:
         """Test list source of arguments."""
 
         with pytest.raises(SystemExit) as exc:
-            main(["--help"])
+            fab.cui.__main__.main(["--help"])
         assert exc.value.code == 0
 
         captured = capsys.readouterr()
@@ -32,7 +32,7 @@ class TestArgsHandling:
         monkeypatch.setattr(sys, "argv", ["__main__.py", "--help"])
 
         with pytest.raises(SystemExit) as exc:
-            main()
+            fab.cui.__main__.main()
         assert exc.value.code == 0
 
         captured = capsys.readouterr()
@@ -46,7 +46,7 @@ class TestUserTarget:
         """Test with a missing target file."""
 
         with pytest.raises(SystemExit) as exc:
-            main(["--file", "nosuch"])
+            fab.cui.__main__.main(["--file", "nosuch"])
         assert exc.value.code == 2
 
         captured = capsys.readouterr()
@@ -64,7 +64,7 @@ class TestUserTarget:
             print("    pass", file=fd)
 
         with pytest.raises(SystemExit) as exc:
-            main(["--file", str(target)])
+            fab.cui.__main__.main(["--file", str(target)])
         assert exc.value.code == 2
 
         captured = capsys.readouterr()
@@ -81,7 +81,7 @@ class TestUserTarget:
             print("    pass", file=fd)
 
         with pytest.raises(SystemExit) as exc:
-            main(["--file", str(target)])
+            fab.cui.__main__.main(["--file", str(target)])
         assert exc.value.code == 2
 
         captured = capsys.readouterr()
@@ -99,7 +99,7 @@ class TestUserTarget:
             print("    pass", file=fd)
 
         with pytest.raises(SystemExit) as exc:
-            main(["--file", str(target)])
+            fab.cui.__main__.main(["--file", str(target)])
 
         assert exc.value.code == 10
 
@@ -115,7 +115,7 @@ class TestUserTarget:
             print("  def run(self, args):", file=fd)
             print("    pass", file=fd)
 
-        main(["--file", str(target)])
+        fab.cui.__main__.main(["--file", str(target)])
 
     def test_default_file(self, tmp_path, capsys, monkeypatch):
         """Test with a valid default file."""
@@ -131,9 +131,44 @@ class TestUserTarget:
 
         with monkeypatch.context() as mp:
             mp.chdir(tmp_path)
-            main([])
+            fab.cui.__main__.main([])
 
         captured = capsys.readouterr()
 
         assert captured.err == ""
         assert captured.out == ""
+
+    def test_interrupt_reporting(self, tmp_path):
+        """Test the KeyboardInterrupt handling."""
+
+        target = tmp_path / "valid.py"
+
+        with target.open("wt", encoding="utf-8") as fd:
+            print("from fab.target.base import FabTargetBase", file=fd)
+            print("class FabBuildTarget(FabTargetBase):", file=fd)
+            print("  project_name = 'testing'", file=fd)
+            print("  def run(self, args):", file=fd)
+            print("    raise KeyboardInterrupt()", file=fd)
+
+        with pytest.raises(SystemExit) as exc:
+            fab.cui.__main__.main(["--file", str(target)])
+        assert exc.value.code == 11
+
+    def test_invalid_import(self, tmp_path, capsys, monkeypatch):
+        """Test import failure error handling."""
+
+        target = tmp_path / "valid.py"
+
+        with target.open("wt", encoding="utf-8") as fd:
+            print("def f():", file=fd)
+            print("  return True", file=fd)
+
+        monkeypatch.setattr(fab.cui.__main__, "spec_from_loader", lambda a, b: None)
+
+        with pytest.raises(SystemExit) as exc:
+            fab.cui.__main__.main(["--file", str(target)])
+        assert exc.value.code == 2
+
+        captured = capsys.readouterr()
+
+        assert "unable to import" in captured.err
