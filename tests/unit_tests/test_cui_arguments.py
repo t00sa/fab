@@ -335,6 +335,7 @@ class TestArgumentCache:
         return
 
     def test_cache_merge_disabled(self):
+        """Check cache does not get merged when disabled."""
 
         cache = _FabArgumentCache()
         nspace = argparse.Namespace(a=1, b=2, c="xyz")
@@ -379,6 +380,7 @@ class TestArgumentCache:
         ],
     )
     def test_cache_merge(self, kwaction, value, expected):
+        """Check cache merges command line args correctly."""
 
         cache = _FabArgumentCache()
         nspace = argparse.Namespace(a=1, b=Path("/dir"))
@@ -397,8 +399,11 @@ class TestArgumentCaching:
     """Test caching with the argument parser."""
 
     def test_disabled(self, fs: FakeFilesystem):
+        """Check parser with caching disabled."""
 
         parser = FabArgumentParser(cache=False)
+        parser._cache_file.unlink(missing_ok=True)
+
         parser.add_argument("--sarg", type=str)
         parser.add_argument("--path", type=Path)
         parser.parse_args(["--sarg=abc", "--path=/foobar"])
@@ -406,6 +411,7 @@ class TestArgumentCaching:
         assert not parser._cache_file.is_file()
 
     def test_enabled(self, fs: FakeFilesystem):
+        """Check parser writes cache file."""
 
         parser = FabArgumentParser(cache=True)
         parser.add_argument("--sarg", type=str)
@@ -415,6 +421,7 @@ class TestArgumentCaching:
         assert parser._cache_file.is_file()
 
     def test_load(self, fs: FakeFilesystem):
+        """Check parser loads cached file."""
 
         parser = FabArgumentParser(cache=True)
         parser.add_argument("--sarg", type=str)
