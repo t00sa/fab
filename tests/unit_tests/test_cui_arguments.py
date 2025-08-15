@@ -305,20 +305,22 @@ class TestParser:
 class TestArgumentCache:
     """Test the ability to cache and re-load argument values."""
 
-    def test_save_disabled(self, fs: FakeFilesystem):
+    def test_save_disabled(self, tmp_path):
         """Test save namespace."""
 
         cache = _FabArgumentCache()
+        cache._cache_file = tmp_path / _FabArgumentCache._cache_file
         nspace = argparse.Namespace(a=1, b=2, c="xyz")
 
         cache.cache = False
         cache._save_namespace(nspace)
         assert not cache._cache_file.exists()
 
-    def test_save_enabled(self, fs: FakeFilesystem):
+    def test_save_enabled(self, tmp_path):
         """Test save namespace."""
 
         cache = _FabArgumentCache()
+        cache._cache_file = tmp_path / _FabArgumentCache._cache_file
         nspace = argparse.Namespace(a=1, b=2, c="xyz")
 
         cache.cache = True
@@ -334,10 +336,11 @@ class TestArgumentCache:
 
         return
 
-    def test_cache_merge_disabled(self):
+    def test_cache_merge_disabled(self, tmp_path):
         """Check cache does not get merged when disabled."""
 
         cache = _FabArgumentCache()
+        cache._cache_file = tmp_path / _FabArgumentCache._cache_file
         nspace = argparse.Namespace(a=1, b=2, c="xyz")
 
         cache.cache = True
@@ -369,20 +372,21 @@ class TestArgumentCache:
                 {"dest": "a", "default": 10, "type": None},
                 10,
                 1,
-                id="default override",
+                id="defaults",
             ),
             pytest.param(
                 {"dest": "b", "type": Path},
                 None,
                 Path("/dir"),
-                id="cache type conversion",
+                id="conversion",
             ),
         ],
     )
-    def test_cache_merge(self, kwaction, value, expected):
+    def test_cache_merge(self, kwaction, value, expected, tmp_path):
         """Check cache merges command line args correctly."""
 
         cache = _FabArgumentCache()
+        cache._cache_file = tmp_path / _FabArgumentCache._cache_file
         nspace = argparse.Namespace(a=1, b=Path("/dir"))
 
         cache.cache = True
@@ -398,11 +402,11 @@ class TestArgumentCache:
 class TestArgumentCaching:
     """Test caching with the argument parser."""
 
-    def test_disabled(self, fs: FakeFilesystem):
+    def test_disabled(self, tmp_path):
         """Check parser with caching disabled."""
 
         parser = FabArgumentParser(cache=False)
-        parser._cache_file.unlink(missing_ok=True)
+        parser._cache_file = tmp_path / FabArgumentParser._cache_file
 
         parser.add_argument("--sarg", type=str)
         parser.add_argument("--path", type=Path)
@@ -410,11 +414,11 @@ class TestArgumentCaching:
 
         assert not parser._cache_file.is_file()
 
-    def test_enabled(self, fs: FakeFilesystem):
+    def test_enabled(self, tmp_path):
         """Check parser writes cache file."""
 
         parser = FabArgumentParser(cache=True)
-        parser._cache_file.unlink(missing_ok=True)
+        parser._cache_file = tmp_path / FabArgumentParser._cache_file
 
         parser.add_argument("--sarg", type=str)
         parser.add_argument("--path", type=Path)
@@ -422,11 +426,11 @@ class TestArgumentCaching:
 
         assert parser._cache_file.is_file()
 
-    def test_load(self, fs: FakeFilesystem):
+    def test_load(self, tmp_path):
         """Check parser loads cached file."""
 
         parser = FabArgumentParser(cache=True)
-        parser._cache_file.unlink(missing_ok=True)
+        parser._cache_file = tmp_path / FabArgumentParser._cache_file
 
         parser.add_argument("--sarg", type=str)
         parser.add_argument("--path", type=Path)
@@ -443,11 +447,11 @@ class TestArgumentCaching:
             and args.path.name == "foobar"
         )
 
-    def test_ignore_cache_args(self):
+    def test_ignore_cache_args(self, tmp_path):
         """Check caching arguments themselves are not cached."""
 
         parser = FabArgumentParser(cache=True)
-        parser._cache_file.unlink(missing_ok=True)
+        parser._cache_file = tmp_path / FabArgumentParser._cache_file
 
         parser.add_argument("--sarg", type=str)
         parser.parse_args(["--save-cache", "--sarg=abc"])
@@ -459,10 +463,11 @@ class TestArgumentCaching:
         assert hasattr(args, "sarg") and args.sarg == "abc"
         assert hasattr(args, "save_cache") and not args.save_cache
 
-    def test_error(self, capsys):
+    def test_error(self, tmp_path, capsys):
         """Check a corrupt cache file raises an error."""
 
         parser = FabArgumentParser(cache=True)
+        parser._cache_file = tmp_path / FabArgumentParser._cache_file
 
         with parser._cache_file.open("wt", encoding="utf-8") as fd:
             print("# invalid data", file=fd)
