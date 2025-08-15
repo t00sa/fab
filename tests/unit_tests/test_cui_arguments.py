@@ -414,6 +414,8 @@ class TestArgumentCaching:
         """Check parser writes cache file."""
 
         parser = FabArgumentParser(cache=True)
+        parser._cache_file.unlink(missing_ok=True)
+
         parser.add_argument("--sarg", type=str)
         parser.add_argument("--path", type=Path)
         parser.parse_args(["--save-cache", "--sarg=abc", "--path=/foobar"])
@@ -424,6 +426,8 @@ class TestArgumentCaching:
         """Check parser loads cached file."""
 
         parser = FabArgumentParser(cache=True)
+        parser._cache_file.unlink(missing_ok=True)
+
         parser.add_argument("--sarg", type=str)
         parser.add_argument("--path", type=Path)
         parser.parse_args(["--save-cache", "--sarg=abc", "--path=/foobar"])
@@ -443,6 +447,8 @@ class TestArgumentCaching:
         """Check caching arguments themselves are not cached."""
 
         parser = FabArgumentParser(cache=True)
+        parser._cache_file.unlink(missing_ok=True)
+
         parser.add_argument("--sarg", type=str)
         parser.parse_args(["--save-cache", "--sarg=abc"])
 
