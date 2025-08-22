@@ -16,6 +16,8 @@ from fab.tools.compiler import FortranCompiler, Gcc, Gfortran, Ifort
 from fab.tools.compiler_wrapper import Mpif90
 from fab.tools.tool_repository import ToolRepository
 
+from fab.errors import FabToolInvalidSetting, FabToolNotAvailable
+
 
 def test_tool_repository_get_singleton_new():
     '''Tests the singleton behaviour.'''
@@ -128,7 +130,8 @@ def test_get_default_error_invalid_category() -> None:
     tr = ToolRepository()
     with raises(RuntimeError) as err:
         tr.get_default("unknown-category-type")  # type: ignore[arg-type]
-    assert "Invalid category type 'str'." in str(err.value)
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert "[str] invalid category" in str(err.value)
 
 
 def test_get_default_error_missing_mpi() -> None:
@@ -139,13 +142,13 @@ def test_get_default_error_missing_mpi() -> None:
     tr = ToolRepository()
     with raises(RuntimeError) as err:
         tr.get_default(Category.FORTRAN_COMPILER, openmp=True)
-    assert str(err.value) == ("Invalid or missing mpi specification "
-                              "for 'FORTRAN_COMPILER'.")
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert str(err.value) == "[FORTRAN_COMPILER] invalid MPI setting"
 
     with raises(RuntimeError) as err:
         tr.get_default(Category.FORTRAN_COMPILER, mpi=True)
-    assert str(err.value) == ("Invalid or missing openmp specification "
-                              "for 'FORTRAN_COMPILER'.")
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
 
 
 def test_get_default_error_missing_openmp() -> None:
@@ -157,23 +160,24 @@ def test_get_default_error_missing_openmp() -> None:
 
     with raises(RuntimeError) as err:
         tr.get_default(Category.FORTRAN_COMPILER, mpi=True)
-    assert ("Invalid or missing openmp specification for 'FORTRAN_COMPILER'"
-            in str(err.value))
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
+
     with raises(RuntimeError) as err:
         tr.get_default(Category.FORTRAN_COMPILER, mpi=True,
                        openmp='123')  # type: ignore[arg-type]
-    assert str(err.value) == ("Invalid or missing openmp specification "
-                              "for 'FORTRAN_COMPILER'.")
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
 
 
 @mark.parametrize("mpi, openmp, message",
-                  [(False, False, "any 'FORTRAN_COMPILER'."),
+                  [(False, False, "invalid category match"),
                    (False, True,
-                    "'FORTRAN_COMPILER' that supports OpenMP."),
+                    "[FORTRAN_COMPILER] invalid OpenMP setting"),
                    (True, False,
-                    "'FORTRAN_COMPILER' that supports MPI."),
-                   (True, True, "'FORTRAN_COMPILER' that supports MPI "
-                    "and OpenMP.")])
+                    "[FORTRAN_COMPILER] invalid MPI setting"),
+                   (True, True, "[FORTRAN_COMPILER] invalid MPI "
+                    "and OpenMP setting")])
 def test_get_default_error_missing_compiler(mpi, openmp, message,
                                             monkeypatch) -> None:
     """
@@ -185,7 +189,8 @@ def test_get_default_error_missing_compiler(mpi, openmp, message,
 
     with raises(RuntimeError) as err:
         tr.get_default(Category.FORTRAN_COMPILER, mpi=mpi, openmp=openmp)
-    assert str(err.value) == f"Could not find {message}"
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert message in str(err.value)
 
 
 def test_get_default_error_missing_openmp_compiler(monkeypatch) -> None:
@@ -204,8 +209,8 @@ def test_get_default_error_missing_openmp_compiler(monkeypatch) -> None:
 
     with raises(RuntimeError) as err:
         tr.get_default(Category.FORTRAN_COMPILER, mpi=False, openmp=True)
-    assert (str(err.value) == "Could not find 'FORTRAN_COMPILER' that "
-                              "supports OpenMP.")
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
 
 
 @mark.parametrize('category', [Category.C_COMPILER,
@@ -249,8 +254,8 @@ def test_default_suite_unknown() -> None:
     repo = ToolRepository()
     with raises(RuntimeError) as err:
         repo.set_default_compiler_suite("does-not-exist")
-    assert str(err.value) == ("Cannot find 'FORTRAN_COMPILER' in "
-                              "the suite 'does-not-exist'.")
+    assert isinstance(err.value, FabToolNotAvailable)
+    assert str(err.value) == "[FORTRAN_COMPILER] not available in suite does-not-exist"
 
 
 def test_no_tool_available(fake_process: FakeProcess) -> None:
@@ -266,8 +271,8 @@ def test_no_tool_available(fake_process: FakeProcess) -> None:
 
     with raises(RuntimeError) as err:
         tr.get_default(Category.SHELL)
-    assert (str(err.value) == "Can't find available 'SHELL' tool. Tools are "
-                              "'sh'.")
+    assert isinstance(err.value, FabToolInvalidSetting)
+    assert str(err.value) == "[SHELL] invalid category where tool names are sh"
 
 
 def test_tool_repository_full_path(fake_process: FakeProcess) -> None:

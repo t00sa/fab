@@ -21,6 +21,8 @@ from fab.steps import check_for_errors, run_mp, step
 from fab.tools import Category, Compiler, Flags
 from fab.util import CompiledFile, log_or_dot, Timer, by_type
 
+from fab.errors import FabToolMismatch
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_SOURCE_GETTER = FilterBuildTrees(suffix='.c')
@@ -123,8 +125,7 @@ def _compile_file(arg: Tuple[AnalysedC, MpCommonArgs]):
     config = mp_payload.config
     compiler = config.tool_box[Category.C_COMPILER]
     if compiler.category != Category.C_COMPILER:
-        raise RuntimeError(f"Unexpected tool '{compiler.name}' of category "
-                           f"'{compiler.category}' instead of CCompiler")
+        raise FabToolMismatch(compiler.name, compiler.category, "CCompiler")
     # Tool box returns a Tool, in order to make mypy happy, we need
     # to cast it to be a Compiler.
     compiler = cast(Compiler, compiler)

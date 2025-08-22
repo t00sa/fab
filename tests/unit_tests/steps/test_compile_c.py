@@ -20,6 +20,8 @@ from fab.tools.category import Category
 from fab.tools.flags import Flags
 from fab.tools.tool_box import ToolBox
 
+from fab.errors import FabToolMismatch
+
 
 @fixture(scope='function')
 def content(tmp_path: Path, stub_tool_box: ToolBox):
@@ -62,8 +64,9 @@ def test_compile_c_wrong_compiler(content, fake_process: FakeProcess) -> None:
     mp_common_args = Mock(config=config)
     with raises(RuntimeError) as err:
         _compile_file((Mock(), mp_common_args))
-    assert str(err.value) == ("Unexpected tool 'some C compiler' of category "
-                              "'FORTRAN_COMPILER' instead of CCompiler")
+    assert isinstance(err.value, FabToolMismatch)
+    assert str(err.value) == ("[some C compiler] got type "
+                              "FORTRAN_COMPILER instead of CCompiler")
 
 
 # This is more of an integration test than a unit test

@@ -13,6 +13,8 @@ from fab.steps.preprocess import preprocess_fortran
 from fab.tools.category import Category
 from fab.tools.tool_box import ToolBox
 
+from fab.errors import FabToolMismatch
+
 
 class Test_preprocess_fortran:
 
@@ -68,5 +70,6 @@ class Test_preprocess_fortran:
         config = BuildConfig('proj', tool_box, fab_workspace=tmp_path)
         with raises(RuntimeError) as err:
             preprocess_fortran(config=config)
-        assert str(err.value) == "Unexpected tool 'cpp' of type '<class " \
-            "'fab.tools.preprocessor.Cpp'>' instead of CppFortran"
+        assert isinstance(err.value, FabToolMismatch)
+        assert str(err.value) == "[cpp] got type <class " \
+            "'fab.tools.preprocessor.Cpp'> instead of CppFortran"

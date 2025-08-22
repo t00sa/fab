@@ -25,6 +25,8 @@ from fab.tools import Category, Compiler, Flags
 from fab.util import (CompiledFile, log_or_dot_finish, log_or_dot, Timer,
                       by_type, file_checksum)
 
+from fab.errors import FabToolMismatch
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_SOURCE_GETTER = FilterBuildTrees(suffix=['.f', '.f90'])
@@ -133,8 +135,7 @@ def handle_compiler_args(config: BuildConfig, common_flags=None,
     # Command line tools are sometimes specified with flags attached.
     compiler = config.tool_box[Category.FORTRAN_COMPILER]
     if compiler.category != Category.FORTRAN_COMPILER:
-        raise RuntimeError(f"Unexpected tool '{compiler.name}' of category "
-                           f"'{compiler.category}' instead of FortranCompiler")
+        raise FabToolMismatch(compiler.name, compiler.category, "FortranCompiler")
     # The ToolBox returns a Tool. In order to make mypy happy, we need to
     # cast this to become a Compiler.
     compiler = cast(Compiler, compiler)
@@ -264,9 +265,7 @@ def process_file(arg: Tuple[AnalysedFortran, MpCommonArgs]) \
         compiler = config.tool_box.get_tool(Category.FORTRAN_COMPILER,
                                             config.mpi)
         if compiler.category != Category.FORTRAN_COMPILER:
-            raise RuntimeError(f"Unexpected tool '{compiler.name}' of "
-                               f"category '{compiler.category}' instead of "
-                               f"FortranCompiler")
+            raise FabToolMismatch(compiler.name, compiler.category, "FortranCompiler")
         # The ToolBox returns a Tool, but we need to tell mypy that
         # this is a Compiler
         compiler = cast(Compiler, compiler)

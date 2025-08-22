@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Sequence, Union
 
 from fab.tools.category import Category
 from fab.tools.flags import ProfileFlags
+from fab.errors import FabToolNotAvailable, FabCommandError, FabCommandNotFound
 
 
 class Tool:
@@ -193,23 +194,19 @@ class Tool:
         # is available or not. Testing for `False` only means this `run`
         # function can be used to test if a tool is available.
         if self._is_available is False:
-            raise RuntimeError(f"Tool '{self.name}' is not available to run "
-                               f"'{command}'.")
+            raise FabToolNotAvailable(self.name)
         self._logger.debug(f'run_command: {" ".join(command)}')
         try:
             res = subprocess.run(command, capture_output=capture_output,
                                  env=env, cwd=cwd, check=False)
         except FileNotFoundError as err:
-            raise RuntimeError("Unable to execute command: "
-                               + str(command)) from err
+            raise FabCommandNotFound(command) from err
         if res.returncode != 0:
-            msg = (f'Command failed with return code {res.returncode}:\n'
-                   f'{command}')
-            if res.stdout:
-                msg += f'\n{res.stdout.decode()}'
-            if res.stderr:
-                msg += f'\n{res.stderr.decode()}'
-            raise RuntimeError(msg)
+            raise FabCommandError(command,
+                                  res.returncode,
+                                  res.stdout,
+                                  res.stderr,
+                                  cwd)
         if capture_output:
             return res.stdout.decode()
         return ""

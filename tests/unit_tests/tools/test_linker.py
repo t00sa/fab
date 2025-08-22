@@ -124,7 +124,7 @@ def test_get_lib_flags_unknown(stub_c_compiler: CCompiler) -> None:
     linker = Linker(compiler=stub_c_compiler)
     with raises(RuntimeError) as err:
         linker.get_lib_flags("unknown")
-    assert str(err.value) == "Unknown library name: 'unknown'"
+    assert str(err.value) == "unknown library unknown"
 
 
 def test_add_lib_flags(stub_c_compiler: CCompiler) -> None:
@@ -263,7 +263,7 @@ def test_c_with_unknown_library(stub_c_compiler: CCompiler,
         # Try to use "customlib" when we haven't added it to the linker
         linker.link([Path("a.o")], Path("a.out"),
                     libs=["customlib"], config=stub_configuration)
-    assert str(err.value) == "Unknown library name: 'customlib'"
+    assert str(err.value) == "unknown library customlib"
 
 
 def test_add_compiler_flag(stub_c_compiler: CCompiler,
@@ -363,7 +363,7 @@ def test_linker_inheriting() -> None:
 
     with raises(RuntimeError) as err:
         wrapper_linker.get_lib_flags("does_not_exist")
-    assert str(err.value) == "Unknown library name: 'does_not_exist'"
+    assert str(err.value) == "unknown library does_not_exist"
 
 
 def test_linker_profile_flags_inheriting(stub_c_compiler):
