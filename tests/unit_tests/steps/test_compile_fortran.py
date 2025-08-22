@@ -18,6 +18,8 @@ from fab.tools.category import Category
 from fab.tools.tool_box import ToolBox
 from fab.util import CompiledFile
 
+from fab.errors import FabToolMismatch
+
 
 @fixture(scope='function')
 def analysed_files():
@@ -60,15 +62,17 @@ def test_compile_cc_wrong_compiler(stub_tool_box,
     mp_common_args = Mock(config=config)
     with raises(RuntimeError) as err:
         process_file((Mock(), mp_common_args))
+    assert isinstance(err.value, FabToolMismatch)
     assert str(err.value) \
-           == "Unexpected tool 'some Fortran compiler' of category " \
-              + "'C_COMPILER' instead of FortranCompiler"
+           == "[some Fortran compiler] got type " \
+              + "C_COMPILER instead of FortranCompiler"
 
     with raises(RuntimeError) as err:
         handle_compiler_args(config)
+    assert isinstance(err.value, FabToolMismatch)
     assert str(err.value) \
-        == "Unexpected tool 'some Fortran compiler' of category " \
-           + "'C_COMPILER' instead of FortranCompiler"
+        == "[some Fortran compiler] got type " \
+           + "C_COMPILER instead of FortranCompiler"
 
 
 class TestCompilePass:

@@ -129,8 +129,7 @@ class ArtefactStore(dict):
 
         art_set = self[artefact]
         if not isinstance(art_set, set):
-            raise RuntimeError(f"Replacing artefacts in dictionary "
-                               f"'{artefact}' is not supported.")
+            raise ValueError(f"{artefact.name} is not mutable")
         art_set.difference_update(set(remove_files))
         art_set.update(add_files)
 

@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 
 from fab.steps import step
 from fab.tools import Category, Versioning
+from fab.errors import FabSourceMergeError
 
 
 def _get_revision(src, revision=None) -> Tuple[str, Union[str, None]]:
@@ -124,6 +125,6 @@ def check_conflict(tool: Versioning, dst: Union[str, Path]):
             for element in entry:
                 if (element.tag == 'wc-status' and
                         element.attrib['item'] == 'conflicted'):
-                    raise RuntimeError(f'{tool} merge encountered a '
-                                       f'conflict:\n{xml_str}')
+                    raise FabSourceMergeError("svn", xml_str)
+
     return False

@@ -22,6 +22,8 @@ from fab.tools import Category, Cpp, CppFortran, Preprocessor
 from fab.util import (log_or_dot_finish, input_to_output_fpath, log_or_dot,
                       suffix_filter, Timer, by_type)
 
+from fab.errors import FabToolMismatch
+
 logger = logging.getLogger(__name__)
 
 
@@ -150,8 +152,7 @@ def preprocess_fortran(config: BuildConfig, source: Optional[ArtefactsGetter] = 
 
     fpp = config.tool_box[Category.FORTRAN_PREPROCESSOR]
     if not isinstance(fpp, CppFortran):
-        raise RuntimeError(f"Unexpected tool '{fpp.name}' of type "
-                           f"'{type(fpp)}' instead of CppFortran")
+        raise FabToolMismatch(fpp.name, type(fpp), "CppFortran")
 
     try:
         common_flags = kwargs.pop('common_flags')
@@ -223,8 +224,7 @@ def preprocess_c(config: BuildConfig,
     source_files = source_getter(config.artefact_store)
     cpp = config.tool_box[Category.C_PREPROCESSOR]
     if not isinstance(cpp, Cpp):
-        raise RuntimeError(f"Unexpected tool '{cpp.name}' of type "
-                           f"'{type(cpp)}' instead of Cpp")
+        raise FabToolMismatch(cpp.name, type(cpp), "Cpp")
 
     pre_processor(
         config,

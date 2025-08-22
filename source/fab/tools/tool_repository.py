@@ -26,6 +26,8 @@ from fab.tools import (Ar, Cpp, CppFortran, Craycc, Crayftn,
                        Gcc, Gfortran, Icc, Icx, Ifort, Ifx,
                        Nvc, Nvfortran, Psyclone, Rsync, Shell)
 
+from fab.errors import FabToolInvalidSetting, FabToolNotAvailable
+
 
 class ToolRepository(dict):
     '''This class implements the tool repository. It stores a list of
@@ -218,8 +220,7 @@ class ToolRepository(dict):
             self[category] = sorted(self[category],
                                     key=lambda x: x.suite != suite)
             if len(self[category]) > 0 and self[category][0].suite != suite:
-                raise RuntimeError(f"Cannot find '{category}' "
-                                   f"in the suite '{suite}'.")
+                raise FabToolNotAvailable(category, suite)
 
     def get_default(self, category: Category,
                     mpi: Optional[bool] = None,
@@ -243,8 +244,7 @@ class ToolRepository(dict):
         '''
 
         if not isinstance(category, Category):
-            raise RuntimeError(f"Invalid category type "
-                               f"'{type(category).__name__}'.")
+            raise FabToolInvalidSetting("category type", type(category).__name__)
 
         # If not a compiler or linker, return the first tool
         if not category.is_compiler and category != Category.LINKER:
@@ -252,16 +252,14 @@ class ToolRepository(dict):
                 if tool.is_available:
                     return tool
             tool_names = ",".join(i.name for i in self[category])
-            raise RuntimeError(f"Can't find available '{category}' tool. "
-                               f"Tools are '{tool_names}'.")
+            raise FabToolInvalidSetting("category", category,
+                                        f"where tool names are {tool_names}")
 
         if not isinstance(mpi, bool):
-            raise RuntimeError(f"Invalid or missing mpi specification "
-                               f"for '{category}'.")
+            raise FabToolInvalidSetting("MPI setting", category)
 
         if not isinstance(openmp, bool):
-            raise RuntimeError(f"Invalid or missing openmp specification "
-                               f"for '{category}'.")
+            raise FabToolInvalidSetting("OpenMP setting", category)
 
         for tool in self[category]:
             # If OpenMP is request, but the tool does not support openmp,
@@ -276,12 +274,11 @@ class ToolRepository(dict):
         # that seems to be an unlikely scenario.
         if mpi:
             if openmp:
-                raise RuntimeError(f"Could not find '{category}' that "
-                                   f"supports MPI and OpenMP.")
-            raise RuntimeError(f"Could not find '{category}' that "
-                               f"supports MPI.")
+                raise FabToolInvalidSetting("MPI and OpenMP setting", category)
+
+            raise FabToolInvalidSetting("MPI setting", category)
 
         if openmp:
-            raise RuntimeError(f"Could not find '{category}' that "
-                               f"supports OpenMP.")
-        raise RuntimeError(f"Could not find any '{category}'.")
+            raise FabToolInvalidSetting("OpenMP setting", category)
+
+        raise FabToolInvalidSetting("category match", category)

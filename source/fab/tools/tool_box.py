@@ -12,6 +12,7 @@ from typing import Dict, Optional
 
 from fab.tools.category import Category
 from fab.tools.tool import Tool
+from fab.errors import FabToolNotAvailable
 
 
 class ToolBox:
@@ -37,7 +38,7 @@ class ToolBox:
         :raises RuntimeError: if the tool to be added is not available.
         '''
         if not tool.is_available:
-            raise RuntimeError(f"Tool '{tool}' is not available.")
+            raise FabToolNotAvailable(tool)
 
         if tool.category in self._all_tools and not silent_replace:
             warnings.warn(f"Replacing existing tool "

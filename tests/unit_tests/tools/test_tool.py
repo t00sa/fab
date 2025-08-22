@@ -18,6 +18,8 @@ from fab.tools.category import Category
 from fab.tools.flags import ProfileFlags
 from fab.tools.tool import CompilerSuiteTool, Tool
 
+from fab.errors import FabCommandError, FabCommandNotFound
+
 
 def test_constructor() -> None:
     """
@@ -89,8 +91,7 @@ def test_is_not_available(fake_process: FakeProcess) -> None:
     # an exception now:
     with raises(RuntimeError) as err:
         tool.run("--ops")
-    assert ("Tool 'gfortran' is not available to run '['gfortran', '--ops']"
-            in str(err.value))
+    assert ("[gfortran] not available" in str(err.value))
 
 
 def test_availability_argument(fake_process: FakeProcess) -> None:
@@ -112,9 +113,8 @@ def test_run_missing(fake_process: FakeProcess) -> None:
     tool = Tool("some tool", "stool", Category.MISC)
     with raises(RuntimeError) as err:
         tool.run("--ops")
-    assert str(err.value).startswith(
-        "Unable to execute command: ['stool', '--ops']"
-    )
+    assert isinstance(err.value, FabCommandNotFound)
+    assert str(err.value) == "unable to execute stool"
 
     # Check that stdout and stderr is returned
     fake_process.register(['stool', '--ops'], returncode=1,
@@ -123,8 +123,9 @@ def test_run_missing(fake_process: FakeProcess) -> None:
     tool = Tool("some tool", "stool", Category.MISC)
     with raises(RuntimeError) as err:
         tool.run("--ops")
-    assert "this is stdout" in str(err.value)
-    assert "this is stderr" in str(err.value)
+    assert isinstance(err.value, FabCommandError)
+    assert "this is stdout" in str(err.value.output)
+    assert "this is stderr" in str(err.value.error)
 
 
 def test_tool_flags_no_profile() -> None:
@@ -204,8 +205,12 @@ class TestToolRun:
         tool = Tool("some tool", "tool", Category.MISC)
         with raises(RuntimeError) as err:
             tool.run()
-        assert str(err.value) == ("Command failed with return code 1:\n"
-                                  "['tool']\nBeef.")
+        assert isinstance(err.value, FabCommandError)
+        assert str(err.value) == "command 'tool' returned 1"
+        assert err.value.code == 1
+        assert err.value.output == "Beef."
+        assert err.value.error == ""
+
         assert call_list(fake_process) == [['tool']]
 
     def test_error_file_not_found(self, fake_process: FakeProcess) -> None:
@@ -216,7 +221,8 @@ class TestToolRun:
         tool = Tool('some tool', 'tool', Category.MISC)
         with raises(RuntimeError) as err:
             tool.run()
-        assert str(err.value) == "Unable to execute command: ['tool']"
+        assert isinstance(err.value, FabCommandNotFound)
+        assert str(err.value) == "unable to execute tool"
         assert call_list(fake_process) == [['tool']]
 
 
