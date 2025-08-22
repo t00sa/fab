@@ -27,9 +27,6 @@ from fab.errors import (
     FabUnknownLibraryError,
 )
 
-from fab.tools.category import Category
-from fab.tools.tool import Tool
-
 
 class TestErrors:
     """Basic tests for the FabError class hierarchy."""

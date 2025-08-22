@@ -90,4 +90,4 @@ def test_add_unavailable_tool(fake_process: FakeProcess) -> None:
     with raises(RuntimeError) as err:
         tb.add_tool(gfortran)
     assert isinstance(err.value, FabToolNotAvailable)
-    assert str(err.value).startswith(f"[gfortran] not available")
+    assert str(err.value).startswith("[gfortran] not available")

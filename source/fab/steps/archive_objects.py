@@ -19,7 +19,7 @@ from fab.util import log_or_dot
 from fab.tools import Ar, Category
 from fab.artefacts import ArtefactsGetter, CollectionGetter
 
-from fab.errors import FabToolMismatch, FabCommandError
+from fab.errors import FabToolMismatch
 
 logger = logging.getLogger(__name__)
 
