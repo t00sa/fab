@@ -122,8 +122,13 @@ class FabBuildTarget(FabTargetBase):
         assert exc.value.code == 10
 
         captured = capsys.readouterr()
+
+        # The format of the error message changes between python 3.9
+        # and 3.10, so a full string comparison results in false
+        # positive failures.  See https://bugs.python.org/issue41905
+        # for more details
         assert captured.err.startswith(
-            "error: Can't instantiate abstract class FabBuildTarget without"
+            "error: Can't instantiate abstract class FabBuildTarget"
         )
 
     def test_valid_file(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
