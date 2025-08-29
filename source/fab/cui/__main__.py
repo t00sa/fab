@@ -11,6 +11,9 @@ Fab command to build and maintain complex software applications.
 import sys
 from importlib.util import module_from_spec, spec_from_loader
 from importlib.machinery import SourceFileLoader
+from pathlib import Path
+from types import ModuleType
+from typing import List, Optional
 
 
 from .arguments import FabArgumentParser
@@ -25,15 +28,16 @@ ARGUMENT_METHOD = "add_arguments"
 CHECK_METHOD = "check_arguments"
 
 
-def import_from_path(module_name, file_path):
+def import_from_path(module_name: str, file_path: Path) -> Optional[ModuleType]:
     """Load a module by file path."""
-    # Temporarily disable bytecode genearation
+    # Temporarily disable bytecode genearation to prevent __pycache__
+    # directories from being created in the current working directory
     bytecode_setting = sys.dont_write_bytecode
     sys.dont_write_bytecode = True
 
     loader = SourceFileLoader(module_name, str(file_path))
     spec = spec_from_loader(module_name, loader)
-    if spec is None:
+    if spec is None or spec.loader is None:
         # Unable to find the file for some reason
         return None
 
@@ -46,7 +50,7 @@ def import_from_path(module_name, file_path):
     return module
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]] = None):
     """Main function.
 
     :param argv: list of command line arguments.  Use sys.argv if not specified.
@@ -67,7 +71,7 @@ def main(argv=None):
         if build_class is None:
             parser.error(f"unable to find {TARGET_CLASS} in {file_args.file}")
         if not issubclass(build_class, FabTargetBase):
-            parser.error(f"{TARGET_CLASS} is not a valid subclass")
+            parser.error(f"{TARGET_CLASS} does not extend FabTargetBase")
 
     elif file_args.zero_config:
         # There is no --file or FabFile, so use zero config mode
@@ -98,10 +102,13 @@ def main(argv=None):
     setup_file_logging(args.project_workspace / "build.log")
 
     try:
-        # Create a build class
-        builder = build_class()
+        # Create a build class.  Ignore typing errors about None
+        # because the previous checks should have forced an exit
+        # via the parser if build_class really is None
+        builder = build_class()  # type: ignore[misc]
     except TypeError as error:
         # Report abstract typing errors
+        print(f"error: {error}", file=sys.stderr)
         logger.error(str(error))
         raise SystemExit(10)
 
@@ -109,6 +116,7 @@ def main(argv=None):
         # Run the build process
         builder.run(args)
     except KeyboardInterrupt:
+        print("error: interrupted by user", file=sys.stderr)
         logger.error("interrupted by user")
         raise SystemExit(11)
 

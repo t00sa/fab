@@ -10,13 +10,14 @@ System tests for the fab command line utility.
 
 import sys
 import pytest
+from pathlib import Path
 import fab.cui.__main__
 
 
 class TestArgsHandling:
     """Test the command line arguments."""
 
-    def test_args_help(self, capsys):
+    def test_args_help(self, capsys: pytest.CaptureFixture) -> None:
         """Test list source of arguments."""
 
         with pytest.raises(SystemExit) as exc:
@@ -26,7 +27,9 @@ class TestArgsHandling:
         captured = capsys.readouterr()
         assert "--file FILE" in captured.out
 
-    def test_sys_help(self, capsys, monkeypatch):
+    def test_sys_help(
+        self, capsys: pytest.CaptureFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test sys.argv alternate source of arguments."""
 
         monkeypatch.setattr(sys, "argv", ["__main__.py", "--help"])
@@ -42,7 +45,7 @@ class TestArgsHandling:
 class TestUserTarget:
     """Test with a user-supplied target script."""
 
-    def test_missing_file(self, capsys):
+    def test_missing_file(self, capsys: pytest.CaptureFixture) -> None:
         """Test with a missing target file."""
 
         with pytest.raises(SystemExit) as exc:
@@ -52,16 +55,21 @@ class TestUserTarget:
         captured = capsys.readouterr()
         assert "error: fab file does not exist" in captured.err
 
-    def test_invalid_class_name(self, tmp_path, capsys):
+    def test_invalid_class_name(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test with an invalid build class name."""
 
         target = tmp_path / "invalid.py"
 
-        with target.open("wt", encoding="utf-8") as fd:
-            print("from fab.target.base import FabTargetBase", file=fd)
-            print("class FabBuildInvalidName(FabTargetBase):", file=fd)
-            print("  def run(self, args):", file=fd)
-            print("    pass", file=fd)
+        target.write_text(
+            """
+from fab.target.base import FabTargetBase
+class FabBuildInvalidName(FabTargetBase):
+  def run(self, args):
+    pass
+            """
+        )
 
         with pytest.raises(SystemExit) as exc:
             fab.cui.__main__.main(["--file", str(target)])
@@ -70,98 +78,138 @@ class TestUserTarget:
         captured = capsys.readouterr()
         assert "error: unable to find FabBuildTarget in" in captured.err
 
-    def test_invalid_subclass(self, tmp_path, capsys):
-        """Test with an invalid build class name."""
+    def test_invalid_subclass(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Test with an invalid subclass."""
 
         target = tmp_path / "invalid.py"
 
-        with target.open("wt", encoding="utf-8") as fd:
-            print("class FabBuildTarget:", file=fd)
-            print("  def run(self, args):", file=fd)
-            print("    pass", file=fd)
+        target.write_text(
+            """
+class FabBuildTarget:
+  def run(self, args):
+    pass
+            """
+        )
 
         with pytest.raises(SystemExit) as exc:
             fab.cui.__main__.main(["--file", str(target)])
         assert exc.value.code == 2
 
         captured = capsys.readouterr()
-        assert "error: FabBuildTarget is not a valid subclass" in captured.err
+        assert "error: FabBuildTarget does not extend FabTargetBase" in captured.err
 
-    def test_missing_project(self, tmp_path):
-        """Test with a simple valid build class."""
+    def test_missing_project(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Test subclass that lacks a project name is invalid."""
 
         target = tmp_path / "valid.py"
 
-        with target.open("wt", encoding="utf-8") as fd:
-            print("from fab.target.base import FabTargetBase", file=fd)
-            print("class FabBuildTarget(FabTargetBase):", file=fd)
-            print("  def run(self, args):", file=fd)
-            print("    pass", file=fd)
+        target.write_text(
+            """
+from fab.target.base import FabTargetBase
+class FabBuildTarget(FabTargetBase):
+  def run(self, args):
+    pass
+            """
+        )
 
         with pytest.raises(SystemExit) as exc:
             fab.cui.__main__.main(["--file", str(target)])
 
         assert exc.value.code == 10
 
-    def test_valid_file(self, tmp_path):
+        captured = capsys.readouterr()
+        assert captured.err.startswith(
+            "error: Can't instantiate abstract class FabBuildTarget without"
+        )
+
+    def test_valid_file(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
         """Test with a simple valid build class."""
 
         target = tmp_path / "valid.py"
 
-        with target.open("wt", encoding="utf-8") as fd:
-            print("from fab.target.base import FabTargetBase", file=fd)
-            print("class FabBuildTarget(FabTargetBase):", file=fd)
-            print("  project_name = 'testing'", file=fd)
-            print("  def run(self, args):", file=fd)
-            print("    pass", file=fd)
+        target.write_text(
+            """
+from fab.target.base import FabTargetBase
+class FabBuildTarget(FabTargetBase):
+  project_name = 'testing'
+  def run(self, args):
+    print("run method invoked")
+            """
+        )
 
         fab.cui.__main__.main(["--file", str(target)])
 
-    def test_default_file(self, tmp_path, capsys, monkeypatch):
+        captured = capsys.readouterr()
+        assert captured.out.startswith("run method invoked")
+        assert captured.err == ""
+
+    def test_default_file(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture, monkeypatch
+    ) -> None:
         """Test with a valid default file."""
 
         target = tmp_path / "FabFile"
 
-        with target.open("wt", encoding="utf-8") as fd:
-            print("from fab.target.base import FabTargetBase", file=fd)
-            print("class FabBuildTarget(FabTargetBase):", file=fd)
-            print("  project_name = 'testing'", file=fd)
-            print("  def run(self, args):", file=fd)
-            print("    pass", file=fd)
+        target.write_text(
+            """
+from fab.target.base import FabTargetBase
+class FabBuildTarget(FabTargetBase):
+  project_name = 'testing'
+  def run(self, args):
+    print("run method invoked")
+            """
+        )
 
         with monkeypatch.context() as mp:
             mp.chdir(tmp_path)
             fab.cui.__main__.main([])
 
         captured = capsys.readouterr()
-
+        assert captured.out.startswith("run method invoked")
         assert captured.err == ""
-        assert captured.out == ""
 
-    def test_interrupt_reporting(self, tmp_path):
+    def test_interrupt_reporting(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test the KeyboardInterrupt handling."""
 
         target = tmp_path / "valid.py"
 
-        with target.open("wt", encoding="utf-8") as fd:
-            print("from fab.target.base import FabTargetBase", file=fd)
-            print("class FabBuildTarget(FabTargetBase):", file=fd)
-            print("  project_name = 'testing'", file=fd)
-            print("  def run(self, args):", file=fd)
-            print("    raise KeyboardInterrupt()", file=fd)
+        target.write_text(
+            """
+from fab.target.base import FabTargetBase
+class FabBuildTarget(FabTargetBase):
+  project_name = 'testing'
+  def run(self, args):
+    raise KeyboardInterrupt()
+            """
+        )
 
         with pytest.raises(SystemExit) as exc:
             fab.cui.__main__.main(["--file", str(target)])
+
         assert exc.value.code == 11
 
-    def test_invalid_import(self, tmp_path, capsys, monkeypatch):
+        captured = capsys.readouterr()
+        assert captured.err.startswith("error: interrupted by user")
+
+    def test_invalid_import(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture, monkeypatch
+    ) -> None:
         """Test import failure error handling."""
 
         target = tmp_path / "valid.py"
 
-        with target.open("wt", encoding="utf-8") as fd:
-            print("def f():", file=fd)
-            print("  return True", file=fd)
+        target.write_text(
+            """
+def f():
+  return True
+            """
+        )
 
         monkeypatch.setattr(fab.cui.__main__, "spec_from_loader", lambda a, b: None)
 
