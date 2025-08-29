@@ -12,7 +12,9 @@
 #
 import os
 import sys
+
 from fab import __version__ as fab_version
+
 sys.path.insert(0, os.path.abspath('../../source'))
 
 
@@ -39,6 +41,7 @@ extensions = [
     'sphinx.ext.graphviz',
     'sphinx.ext.intersphinx',
     'sphinx.ext.autosectionlabel',
+    'sphinxcontrib.rsvgconverter',
     'sphinx_autodoc_typehints',
     'sphinx_copybutton',
 ]
@@ -73,7 +76,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/metomi/fab",
+            "url": "https://github.com/MetOffice/fab",
             "icon": "fa-brands fa-github"
         }
     ],
@@ -104,3 +107,12 @@ autosectionlabel_prefix_document = True
 
 # include default values in argument descriptions
 typehints_defaults = 'braces-after'
+
+# linkcheck builder
+linkcheck_allow_redirects = True  # Allow redirects to pass
+linkcheck_ignore = [
+    "https://metoffice.sharepoint.com",  # Ignore SharePoint links
+    r'.*\.py$',  # Ignores URLs ending with .py
+]
+linkcheck_timeout = 2
+linkcheck_allow_unauthorized = True  # Allow unauthorized links to pass
