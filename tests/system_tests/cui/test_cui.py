@@ -11,6 +11,7 @@ System tests for the fab command line utility.
 import sys
 import pytest
 from pathlib import Path
+from textwrap import dedent
 import fab.cui.__main__
 
 
@@ -86,11 +87,13 @@ class FabBuildInvalidName(FabTargetBase):
         target = tmp_path / "invalid.py"
 
         target.write_text(
-            """
-class FabBuildTarget:
-  def run(self, args):
-    pass
-            """
+            dedent(
+                """
+                class FabBuildTarget:
+                  def run(self, args):
+                    pass
+                """
+            )
         )
 
         with pytest.raises(SystemExit) as exc:
@@ -108,12 +111,14 @@ class FabBuildTarget:
         target = tmp_path / "valid.py"
 
         target.write_text(
-            """
-from fab.target.base import FabTargetBase
-class FabBuildTarget(FabTargetBase):
-  def run(self, args):
-    pass
-            """
+            dedent(
+                """
+                from fab.target.base import FabTargetBase
+                class FabBuildTarget(FabTargetBase):
+                  def run(self, args):
+                    pass
+                """
+            )
         )
 
         with pytest.raises(SystemExit) as exc:
@@ -137,13 +142,15 @@ class FabBuildTarget(FabTargetBase):
         target = tmp_path / "valid.py"
 
         target.write_text(
-            """
-from fab.target.base import FabTargetBase
-class FabBuildTarget(FabTargetBase):
-  project_name = 'testing'
-  def run(self, args):
-    print("run method invoked")
-            """
+            dedent(
+                """
+                from fab.target.base import FabTargetBase
+                class FabBuildTarget(FabTargetBase):
+                  project_name = 'testing'
+                  def run(self, args):
+                    print("run method invoked")
+                """
+            )
         )
 
         fab.cui.__main__.main(["--file", str(target)])
@@ -160,13 +167,15 @@ class FabBuildTarget(FabTargetBase):
         target = tmp_path / "FabFile"
 
         target.write_text(
-            """
-from fab.target.base import FabTargetBase
-class FabBuildTarget(FabTargetBase):
-  project_name = 'testing'
-  def run(self, args):
-    print("run method invoked")
-            """
+            dedent(
+                """
+                from fab.target.base import FabTargetBase
+                class FabBuildTarget(FabTargetBase):
+                  project_name = 'testing'
+                  def run(self, args):
+                    print("run method invoked")
+                """
+            )
         )
 
         with monkeypatch.context() as mp:
@@ -185,13 +194,15 @@ class FabBuildTarget(FabTargetBase):
         target = tmp_path / "valid.py"
 
         target.write_text(
-            """
-from fab.target.base import FabTargetBase
-class FabBuildTarget(FabTargetBase):
-  project_name = 'testing'
-  def run(self, args):
-    raise KeyboardInterrupt()
-            """
+            dedent(
+                """
+                from fab.target.base import FabTargetBase
+                class FabBuildTarget(FabTargetBase):
+                  project_name = 'testing'
+                  def run(self, args):
+                    raise KeyboardInterrupt()
+                """
+            )
         )
 
         with pytest.raises(SystemExit) as exc:
@@ -210,10 +221,12 @@ class FabBuildTarget(FabTargetBase):
         target = tmp_path / "valid.py"
 
         target.write_text(
-            """
-def f():
-  return True
-            """
+            dedent(
+                """
+                def f():
+                  return True
+                """
+            )
         )
 
         monkeypatch.setattr(fab.cui.__main__, "spec_from_loader", lambda a, b: None)
