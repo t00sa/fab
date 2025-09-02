@@ -203,7 +203,6 @@ class FabArgumentParser(argparse.ArgumentParser):
         setup_logging(verbose, debug, quiet)
 
         logger = make_logger("system")
-        logger.debug("command line arguments are %s", namespace)
 
         self._have_logging = True
 
