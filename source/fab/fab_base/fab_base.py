@@ -31,6 +31,8 @@ from fab.steps.link import link_exe, link_shared_object
 from fab.steps.preprocess import preprocess_c, preprocess_fortran
 from fab.tools import Category, ToolBox, ToolRepository
 
+from fab.cui.arguments import CachingArgumentParser
+
 
 class FabBase:
     '''
@@ -293,7 +295,7 @@ class FabBase:
         # Use `argparser.parse_known_args` to just handle --site and
         # --platform. We also suppress help (all of which will be handled
         # later, including proper help messages)
-        parser = argparse.ArgumentParser(add_help=False)
+        parser = CachingArgumentParser(add_help=False)
         parser.add_argument("--site", "-s", type=str, default="$SITE")
         parser.add_argument("--platform", "-p", type=str, default="$PLATFORM")
 
@@ -340,8 +342,8 @@ class FabBase:
 
     def define_command_line_options(
             self,
-            parser: Optional[argparse.ArgumentParser] = None
-            ) -> argparse.ArgumentParser:
+            parser: Optional[CachingArgumentParser] = None
+            ) -> CachingArgumentParser:
         '''
         Defines command line options. Can be overwritten by a derived
         class which can provide its own instance (to easily allow for a
@@ -353,7 +355,7 @@ class FabBase:
 
         if not parser:
             # The formatter class makes sure to print default settings
-            parser = argparse.ArgumentParser(
+            parser = CachingArgumentParser(
                 description=("A Fab-based build system. Note that if --suite "
                              "is specified, this will change the default for "
                              "compiler and linker"),
@@ -437,7 +439,7 @@ class FabBase:
         return parser
 
     def handle_command_line_options(self,
-                                    parser: argparse.ArgumentParser) -> None:
+                                    parser: CachingArgumentParser) -> None:
         '''
         Analyse the actual command line options using the specified parser.
         The base implementation will handle the `--suite` parameter, and
@@ -445,7 +447,7 @@ class FabBase:
         variables). Needs to be overwritten to handle additional options
         specified by a derived script.
 
-        :param argparse.ArgumentParser parser: the argument parser.
+        :param CachingArgumentParser parser: the argument parser.
         '''
         # pylint: disable=too-many-branches
         self._args = parser.parse_args(sys.argv[1:])
