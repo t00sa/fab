@@ -111,7 +111,7 @@ class _FabArgumentCache:
             # Do not add the group if caching is disabled
             return
 
-        group = self.add_argument_group("fab cache arguments")
+        group = self.add_argument_group("fab cache arguments")  # type: ignore[attr-defined]
 
         group.add_argument(
             "--save-cache",
@@ -207,10 +207,10 @@ class _FabArgumentCache:
             # Add cached argument settings if enabled
             try:
                 self._merge_cached_namespace(
-                    self._option_string_actions.values(), namespace
+                    self._option_string_actions.values(), namespace  # type: ignore[attr-defined]
                 )
             except json.JSONDecodeError as err:
-                self.error(
+                self.error(  # type: ignore[attr-defined]
                     "--use-cache: "
                     f"decode error at line {err.lineno} column {err.colno}"
                 )
