@@ -7,6 +7,10 @@ Welcome to Fab's documentation!
 *******************************
 Version |version| (release |release|).
 
+.. raw:: html
+
+   <p><a href="latex/fab.pdf">Download PDF version of this documentation</a></p>
+
 What is fab?
 ============
 
@@ -71,7 +75,7 @@ See also
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Contents
    :hidden:
 
    install
@@ -82,6 +86,14 @@ See also
    advanced_config
    site-specific-config
    features
+
+.. toctree::
+   :maxdepth: 2
+   :caption: FabBase class
+   :hidden:
+
+   fab_base/index.rst
+
    Api Reference <api>
    development
    glossary
