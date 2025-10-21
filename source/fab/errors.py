@@ -342,3 +342,16 @@ class FabSourceFetchError(FabSourceError):
         self.source = source
         self.reason = reason
         super().__init__(f"could not fetch {source}: {reason}")
+
+
+class FabParseError(FabError):
+    """Error while parsing or analysing source code."""
+
+    def __init__(self, message, fpath=None, lineno=None):
+        if fpath is not None:
+            # Add the name of the source file and the line number
+            message = message.rstrip() + f" ({fpath.name}"
+            if lineno is not None:
+                message += f":{lineno}"
+            message += ")"
+        super().__init__(message)

@@ -11,7 +11,6 @@ import logging
 from dataclasses import dataclass
 from typing import cast, Dict, List, Optional, Tuple
 
-from fab import FabException
 from fab.artefacts import (ArtefactsGetter, ArtefactSet, ArtefactStore,
                            FilterBuildTrees)
 from fab.build_config import BuildConfig, FlagsConfig
@@ -146,13 +145,9 @@ def _compile_file(arg: Tuple[AnalysedC, MpCommonArgs]):
         else:
             obj_file_prebuild.parent.mkdir(parents=True, exist_ok=True)
             log_or_dot(logger, f'CompileC compiling {analysed_file.fpath}')
-            try:
-                compiler.compile_file(analysed_file.fpath, obj_file_prebuild,
-                                      config=config,
-                                      add_flags=flags)
-            except RuntimeError as err:
-                return FabException(f"error compiling "
-                                    f"{analysed_file.fpath}:\n{err}")
+            compiler.compile_file(analysed_file.fpath, obj_file_prebuild,
+                                  config=config,
+                                  add_flags=flags)
 
     send_metric(
         group="compile c",

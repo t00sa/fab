@@ -40,7 +40,7 @@ import warnings
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Union
 
-from fab import FabException
+from fab.errors import FabError
 from fab.artefacts import ArtefactsGetter, ArtefactSet, CollectionConcat
 from fab.dep_tree import extract_sub_tree, validate_dependencies, AnalysedDependent
 from fab.mo import add_mo_commented_file_deps
@@ -162,7 +162,7 @@ def analyse(
         if c_with_main:
             root_symbols.append('main')
             if len(c_with_main) > 1:
-                raise FabException("multiple c main() functions found")
+                raise FabError("multiple C main() functions found")
 
         logger.info(f'automatically found the following programs to build: {", ".join(root_symbols)}')
 

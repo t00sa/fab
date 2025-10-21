@@ -16,7 +16,7 @@ from fparser.common.readfortran import FortranFileReader  # type: ignore
 from fparser.two.parser import ParserFactory  # type: ignore
 from fparser.two.utils import FortranSyntaxError  # type: ignore
 
-from fab import FabException
+from fab.errors import FabParseError
 from fab.build_config import BuildConfig
 from fab.dep_tree import AnalysedDependent
 from fab.parse import EmptySourceFile
@@ -39,8 +39,7 @@ def _typed_child(parent, child_type: Type, must_exist=False):
         return children[0]
 
     if must_exist:
-        raise FabException(f'Could not find child of type {child_type} '
-                           f'in {parent}')
+        raise FabParseError(f'Child of type {child_type} is not in {parent}')
     return None
 
 
