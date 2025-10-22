@@ -26,7 +26,7 @@ from fab.tools import (Ar, Cpp, CppFortran, Craycc, Crayftn,
                        Gcc, Gfortran, Icc, Icx, Ifort, Ifx,
                        Nvc, Nvfortran, Psyclone, Rsync, Shell)
 
-from fab.errors import FabToolInvalidSetting, FabToolNotAvailable
+from fab.errors import FabToolInvalidSetting, FabToolNotAvailable, FabToolError
 
 
 class ToolRepository(dict):
@@ -170,14 +170,12 @@ class ToolRepository(dict):
             in which case only the stem of the path is used, and the tool
             will be updated to use the absolute path specified.
 
-        :raises KeyError: if there is no tool in this category.
-        :raises KeyError: if no tool in the given category has the
-            requested name.
+        :raises FabToolNotAvailable: if there is no tool in this category or
+            if category does not have a tool of the requested name.
         '''
 
         if category not in self:
-            raise KeyError(f"Unknown category '{category}' "
-                           f"in ToolRepository.get_tool().")
+            raise FabToolNotAvailable(category)
 
         path_name = Path(name)
         all_tools = self[category]
@@ -205,8 +203,7 @@ class ToolRepository(dict):
                 if tool.is_available:
                     return tool
 
-        raise KeyError(f"Unknown tool '{name}' in category '{category}' "
-                       f"in ToolRepository.")
+        raise FabToolNotAvailable(name, category)
 
     def set_default_compiler_suite(self, suite: str):
         """
@@ -245,10 +242,10 @@ class ToolRepository(dict):
             is used to specify if a Fortran-based linker is required.
             Otherwise, a C-based linker will be returned.
 
-        :raises KeyError: if the category does not exist.
-        :raises RuntimeError: if no tool in the requested category is
+        :raises FabToolNotAvailable: if the category does not exist.
+        :raises FabToolError: if no tool in the requested category is
             available on the system.
-        :raises RuntimeError: if no compiler/linker is found with the
+        :raises FabToolInvalidSetting: if no compiler/linker is found with the
             requested level of MPI support (yes or no).
         '''
 
@@ -273,8 +270,7 @@ class ToolRepository(dict):
 
         if (category is Category.LINKER and
                 not isinstance(enforce_fortran_linker, bool)):
-            raise RuntimeError(f"Invalid or missing enforce_fortran_linker "
-                               f"specification for '{category}'.")
+            raise FabToolError(category, "invalid enforce_fortran_linker value")
 
         for tool in self[category]:
             tool = cast(Union[Compiler, Linker], tool)   # make mypy happy

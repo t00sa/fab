@@ -42,7 +42,7 @@ class ToolBox:
         :param silent_replace: if set, no warning will be printed
             if an existing tool is replaced.
 
-        :raises RuntimeError: if the tool to be added is not available.
+        :raises FabToolNotAvailable: if the tool to be added is not available.
         '''
         if not tool.is_available:
             raise FabToolNotAvailable(tool)

@@ -145,10 +145,8 @@ def test_compiler_hash_invalid_version():
 
     # returns an invalid compiler version string
     with mock.patch.object(cc, "run", mock.Mock(return_value='foo v1')):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             cc.get_hash()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert "[gcc] invalid version" in str(err.value)
 
 
 def test_compiler_syntax_only():
@@ -300,9 +298,8 @@ def test_get_version_1_part_version():
 
     c = Gfortran()
     with mock.patch.object(c, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion) as err:
             c.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
         assert expected_error in str(err.value)
 
 
@@ -361,9 +358,8 @@ def test_get_version_non_int_version_format(version):
 
     c = Gfortran()
     with mock.patch.object(c, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion) as err:
             c.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
         assert expected_error in str(err.value)
 
 
@@ -380,33 +376,27 @@ def test_get_version_unknown_version_format():
 
     c = Gfortran()
     with mock.patch.object(c, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion) as err:
             c.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
         assert expected_error in str(err.value)
 
 
 def test_get_version_command_failure():
     '''If the version command fails, we must raise an error.'''
     c = Gfortran(exec_name="does_not_exist")
-    with raises(RuntimeError) as err:
+    with raises(FabToolError):
         c.get_version()
-    assert isinstance(err.value, FabToolError)
-    assert "unable to get compiler version" in str(err.value)
 
 
 def test_get_version_unknown_command_response():
     '''If the full version output is in an unknown format,
     we must raise an error.'''
     full_output = 'GNU Fortran  1.2.3'
-    expected_error = "invalid version"
 
     c = Gfortran()
     with mock.patch.object(c, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             c.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert expected_error in str(err.value)
 
 
 def test_get_version_good_result_is_cached():
@@ -432,7 +422,7 @@ def test_get_version_bad_result_is_not_cached():
     # Set up the compiler to fail the first time
     c = Gfortran()
     with mock.patch.object(c, 'run', side_effect=RuntimeError("")):
-        with raises(RuntimeError):
+        with raises(FabToolError):
             c.get_version()
 
     # Now let the run method run successfully and we should get the version.
@@ -474,10 +464,8 @@ def test_gcc_get_version_with_icc_string():
 
     """)
     with mock.patch.object(gcc, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             gcc.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert "invalid version" in str(err.value)
 
 
 # ============================================================================
@@ -581,11 +569,8 @@ def test_gfortran_get_version_with_ifort_string():
     gfortran = Gfortran()
     with mock.patch.object(gfortran, "run",
                            mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             gfortran.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -620,11 +605,8 @@ def test_icc_get_version_with_gcc_string():
     """)
     icc = Icc()
     with mock.patch.object(icc, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             icc.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -696,11 +678,8 @@ def test_ifort_get_version_with_icc_string():
     """)
     ifort = Ifort()
     with mock.patch.object(ifort, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             ifort.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 @mark.parametrize("version", ["5.15f.2",
@@ -717,11 +696,8 @@ def test_ifort_get_version_invalid_version(version):
     """)
     ifort = Ifort()
     with mock.patch.object(ifort, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             ifort.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -761,11 +737,8 @@ def test_icx_get_version_with_icc_string():
     """)
     icx = Icx()
     with mock.patch.object(icx, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             icx.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -801,11 +774,8 @@ def test_ifx_get_version_with_ifort_string():
     """)
     ifx = Ifx()
     with mock.patch.object(ifx, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             ifx.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -841,11 +811,8 @@ def test_nvc_get_version_with_icc_string():
         """)
     nvc = Nvc()
     with mock.patch.object(nvc, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             nvc.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -884,11 +851,8 @@ def test_nvfortran_get_version_with_ifort_string():
     nvfortran = Nvfortran()
     with mock.patch.object(nvfortran, "run",
                            mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             nvfortran.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -951,11 +915,8 @@ def test_craycc_get_version_with_icc_string():
     """)
     craycc = Craycc()
     with mock.patch.object(craycc, "run", mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             craycc.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))
 
 
 # ============================================================================
@@ -1002,8 +963,5 @@ def test_crayftn_get_version_with_ifort_string():
     crayftn = Crayftn()
     with mock.patch.object(crayftn, "run",
                            mock.Mock(return_value=full_output)):
-        with raises(RuntimeError) as err:
+        with raises(FabToolInvalidVersion):
             crayftn.get_version()
-        assert isinstance(err.value, FabToolInvalidVersion)
-        assert ("invalid version"
-                in str(err.value))

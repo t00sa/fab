@@ -20,7 +20,7 @@ from fab.tools.category import Category
 from fab.tools.flags import Flags
 from fab.tools.tool_box import ToolBox
 
-from fab.errors import FabToolMismatch
+from fab.errors import FabCommandError, FabToolMismatch
 
 
 @fixture(scope='function')
@@ -62,11 +62,8 @@ def test_compile_c_wrong_compiler(content, fake_process: FakeProcess) -> None:
     # Now check that _compile_file detects the incorrect class of the
     # C compiler
     mp_common_args = Mock(config=config)
-    with raises(RuntimeError) as err:
+    with raises(FabToolMismatch):
         _compile_file((Mock(), mp_common_args))
-    assert isinstance(err.value, FabToolMismatch)
-    assert str(err.value) == ("[some C compiler] got type "
-                              "FORTRAN_COMPILER instead of CCompiler")
 
 
 # This is more of an integration test than a unit test
@@ -110,7 +107,7 @@ class TestCompileC:
             'scc', '-c', 'foo.c',
             '-o', str(config.build_output / '_prebuild/foo.101865856.o')
         ], returncode=1)
-        with raises(RuntimeError):
+        with raises(FabCommandError):
             compile_c(config=config)
 
 

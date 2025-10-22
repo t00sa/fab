@@ -118,11 +118,7 @@ def process_artefact(arg: Tuple[Path, MpCommonArgs]):
 
             log_or_dot(logger, f"PreProcessor running with parameters: "
                                f"'{' '.join(params)}'.'")
-            try:
-                args.preprocessor.preprocess(input_fpath, output_fpath, params)
-            except Exception as err:
-                raise Exception(f"error preprocessing {input_fpath}:\n"
-                                f"{err}") from err
+            args.preprocessor.preprocess(input_fpath, output_fpath, params)
 
     send_metric(args.name, str(input_fpath), {'time_taken': timer.taken, 'start': timer.start})
     return output_fpath

@@ -20,7 +20,7 @@ from fab.steps import check_for_errors, run_mp, step
 from fab.tools import Category, Compiler, Flags
 from fab.util import CompiledFile, log_or_dot, Timer, by_type
 
-from fab.errors import FabToolMismatch
+from fab.errors import FabToolMismatch, FabHashError
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +167,6 @@ def _get_obj_combo_hash(config: BuildConfig,
             compiler.get_hash(config.profile),
         ])
     except TypeError as err:
-        raise ValueError("could not generate combo hash for "
-                         "object file") from err
+        raise FabHashError(analysed_file.fpath) from err
+
     return obj_combo_hash

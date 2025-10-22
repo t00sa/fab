@@ -16,7 +16,7 @@ from fparser.common.readfortran import FortranFileReader  # type: ignore
 from fparser.two.parser import ParserFactory  # type: ignore
 from fparser.two.utils import FortranSyntaxError  # type: ignore
 
-from fab.errors import FabParseError
+from fab.errors import FabAnalysisError
 from fab.build_config import BuildConfig
 from fab.dep_tree import AnalysedDependent
 from fab.parse import EmptySourceFile
@@ -33,13 +33,13 @@ def _typed_child(parent, child_type: Type, must_exist=False):
     children = list(filter(lambda child: isinstance(child, child_type),
                            parent.children))
     if len(children) > 1:
-        raise ValueError(f"too many children found of type {child_type}")
+        raise FabAnalysisError(f"too many children found of type {child_type}")
 
     if children:
         return children[0]
 
     if must_exist:
-        raise FabParseError(f'Child of type {child_type} is not in {parent}')
+        raise FabAnalysisError(f'child of type {child_type} is not in {parent}')
     return None
 
 

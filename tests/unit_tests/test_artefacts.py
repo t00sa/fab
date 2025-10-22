@@ -84,7 +84,7 @@ def test_artefact_store_replace() -> None:
                                                               Path("c")])
 
     # Test the behaviour for dictionaries
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(AssertionError) as err:
         artefact_store.replace(ArtefactSet.OBJECT_FILES,
                                remove_files=[Path("a")], add_files=["c"])
     assert str(err.value) == "OBJECT_FILES is not mutable"

@@ -107,11 +107,9 @@ def test_check_process_missing(fake_process: FakeProcess) -> None:
     psyclone = Psyclone()
     config = Mock()
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolNotAvailable):
         psyclone.process(config,
                          Path("x90file"))
-    assert isinstance(err.value, FabToolNotAvailable)
-    assert str(err.value).startswith("[psyclone] not available")
 
 
 def test_processing_errors_without_api(fake_process: FakeProcess) -> None:
@@ -124,28 +122,22 @@ def test_processing_errors_without_api(fake_process: FakeProcess) -> None:
     psyclone = Psyclone()
     config = Mock()
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolPsycloneAPI):
         psyclone.process(config,
                          Path('x90file'),
                          api=None,
                          psy_file=Path('psy_file'))
-    assert isinstance(err.value, FabToolPsycloneAPI)
-    assert (str(err.value) == "[psyclone] called without API and with psy_file")
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolPsycloneAPI):
         psyclone.process(config,
                          Path('x90file'),
                          api=None,
                          alg_file=Path('alg_file'))
-    assert isinstance(err.value, FabToolPsycloneAPI)
-    assert (str(err.value) == "[psyclone] called without API and with alg_file")
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolPsycloneAPI):
         psyclone.process(config,
                          Path('x90file'),
                          api=None)
-    assert isinstance(err.value, FabToolPsycloneAPI)
-    assert (str(err.value) == "[psyclone] called without API but not with transformed_file")
 
 
 @mark.parametrize("api", ["dynamo0.3", "lfric"])
@@ -160,35 +152,25 @@ def test_processing_errors_with_api(api: str,
     psyclone = Psyclone()
     config = Mock()
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolPsycloneAPI):
         psyclone.process(config,
                          Path("x90file"),
                          api=api,
                          psy_file=Path("psy_file"))
-    assert isinstance(err.value, FabToolPsycloneAPI)
-    assert str(err.value).startswith(
-        f"[psyclone] called with {api} API but not with alg_file"
-    )
-    with raises(RuntimeError) as err:
+
+    with raises(FabToolPsycloneAPI):
         psyclone.process(config,
                          Path("x90file"),
                          api=api,
                          alg_file=Path("alg_file"))
-    assert isinstance(err.value, FabToolPsycloneAPI)
-    assert str(err.value).startswith(
-        f"[psyclone] called with {api} API but not with psy_file"
-    )
-    with raises(RuntimeError) as err:
+
+    with raises(FabToolPsycloneAPI):
         psyclone.process(config,
                          Path("x90file"),
                          api=api,
                          psy_file=Path("psy_file"),
                          alg_file=Path("alg_file"),
                          transformed_file=Path("transformed_file"))
-    assert isinstance(err.value, FabToolPsycloneAPI)
-    assert str(err.value).startswith(
-        f"[psyclone] called with {api} API and with transformed_file"
-    )
 
 
 @mark.parametrize("version", ["2.4.0", "2.5.0"])

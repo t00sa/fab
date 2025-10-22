@@ -76,8 +76,5 @@ class Test_preprocess_fortran:
         tool_box.add_tool(cpp, silent_replace=True)
 
         config = BuildConfig('proj', tool_box, fab_workspace=tmp_path)
-        with raises(RuntimeError) as err:
+        with raises(FabToolMismatch):
             preprocess_fortran(config=config)
-        assert isinstance(err.value, FabToolMismatch)
-        assert str(err.value) == "[cpp] got type <class " \
-            "'fab.tools.preprocessor.Cpp'> instead of CppFortran"

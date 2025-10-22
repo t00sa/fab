@@ -53,7 +53,7 @@ class Tool:
         # or not. It will be set to the output of `check_available` when
         # querying the `is_available` property.
         # If `_is_available` is False, any call to `run` will immediately
-        # raise a RuntimeError. As long as it is still set to None (or True),
+        # raise an exception. As long as it is still set to None (or True),
         # the `run` method will work, allowing the `check_available` method
         # to use `run` to determine if a tool is available or not.
         self._is_available: Optional[bool] = None
@@ -178,8 +178,8 @@ class Tool:
             If True, capture and return stdout. If False, the command will
             print its output directly to the console.
 
-        :raises RuntimeError: if the code is not available.
-        :raises RuntimeError: if the return code of the executable is not 0.
+        :raises FabToolNotAvailable: if the tool is not available.
+        :raises FabCommandError: if the return code of the executable is not 0.
         """
         command = [str(self.exec_path)] + self.get_flags(profile)
         if additional_parameters:

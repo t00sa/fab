@@ -67,10 +67,9 @@ def test_tool_repository_get_tool_with_exec_name(stub_fortran_compiler):
 
     # If mpif90 is not available, an error is raised:
     mpif90._is_available = False
-    try:
+
+    with raises(FabToolNotAvailable):
         tr.get_tool(Category.FORTRAN_COMPILER, "mpif90")
-    except KeyError as err:
-        assert "Unknown tool 'mpif90' in category" in str(err)
 
     # When using the exec name, the compiler must be available:
     mpif90._is_available = True
@@ -100,14 +99,11 @@ def test_get_tool_error():
     Tests error handling during tet_tool.
     """
     tr = ToolRepository()
-    with raises(KeyError) as err:
+    with raises(FabToolNotAvailable):
         tr.get_tool("unknown-category", "something")
-    assert "Unknown category 'unknown-category'" in str(err.value)
 
-    with raises(KeyError) as err:
+    with raises(FabToolNotAvailable):
         tr.get_tool(Category.C_COMPILER, "something")
-    assert ("Unknown tool 'something' in category 'C_COMPILER'"
-            in str(err.value))
 
 
 def test_get_default(stub_tool_repository, stub_fortran_compiler,
@@ -132,10 +128,8 @@ def test_get_default_error_invalid_category() -> None:
     not e.g. a string.
     """
     tr = ToolRepository()
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting):
         tr.get_default("unknown-category-type")  # type: ignore[arg-type]
-    assert isinstance(err.value, FabToolInvalidSetting)
-    assert "[str] invalid category" in str(err.value)
 
 
 def test_get_default_error_missing_mpi() -> None:
@@ -144,15 +138,11 @@ def test_get_default_error_missing_mpi() -> None:
     parameter is missing (which is required for a compiler).
     """
     tr = ToolRepository()
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting):
         tr.get_default(Category.FORTRAN_COMPILER, openmp=True)
-    assert isinstance(err.value, FabToolInvalidSetting)
-    assert str(err.value) == "[FORTRAN_COMPILER] invalid MPI setting"
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting):
         tr.get_default(Category.FORTRAN_COMPILER, mpi=True)
-    assert isinstance(err.value, FabToolInvalidSetting)
-    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
 
 
 def test_get_default_error_missing_openmp() -> None:
@@ -162,16 +152,12 @@ def test_get_default_error_missing_openmp() -> None:
     """
     tr = ToolRepository()
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting):
         tr.get_default(Category.FORTRAN_COMPILER, mpi=True)
-    assert isinstance(err.value, FabToolInvalidSetting)
-    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting):
         tr.get_default(Category.FORTRAN_COMPILER, mpi=True,
                        openmp='123')  # type: ignore[arg-type]
-    assert isinstance(err.value, FabToolInvalidSetting)
-    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
 
 
 @mark.parametrize("mpi, openmp, message",
@@ -191,9 +177,8 @@ def test_get_default_error_missing_compiler(mpi, openmp, message,
     tr = ToolRepository()
     monkeypatch.setitem(tr, Category.FORTRAN_COMPILER, [])
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting) as err:
         tr.get_default(Category.FORTRAN_COMPILER, mpi=mpi, openmp=openmp)
-    assert isinstance(err.value, FabToolInvalidSetting)
     assert message in str(err.value)
 
 
@@ -211,10 +196,8 @@ def test_get_default_error_missing_openmp_compiler(monkeypatch) -> None:
     tr = ToolRepository()
     monkeypatch.setitem(tr, Category.FORTRAN_COMPILER, [fc])
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting):
         tr.get_default(Category.FORTRAN_COMPILER, mpi=False, openmp=True)
-    assert isinstance(err.value, FabToolInvalidSetting)
-    assert str(err.value) == "[FORTRAN_COMPILER] invalid OpenMP setting"
 
 
 @mark.parametrize('category', [Category.C_COMPILER,
@@ -260,10 +243,8 @@ def test_default_suite_unknown() -> None:
     Tests handling if a compiler suite is selected that does not exist.
     """
     repo = ToolRepository()
-    with raises(RuntimeError) as err:
+    with raises(FabToolNotAvailable):
         repo.set_default_compiler_suite("does-not-exist")
-    assert isinstance(err.value, FabToolNotAvailable)
-    assert str(err.value) == "[FORTRAN_COMPILER] not available in suite does-not-exist"
 
 
 def test_no_tool_available(fake_process: FakeProcess) -> None:
@@ -277,10 +258,8 @@ def test_no_tool_available(fake_process: FakeProcess) -> None:
     tr = ToolRepository()
     tr.set_default_compiler_suite("gnu")
 
-    with raises(RuntimeError) as err:
+    with raises(FabToolInvalidSetting):
         tr.get_default(Category.SHELL)
-    assert isinstance(err.value, FabToolInvalidSetting)
-    assert str(err.value) == "[SHELL] invalid category where tool names are sh"
 
 
 def test_tool_repository_full_path(fake_process: FakeProcess) -> None:

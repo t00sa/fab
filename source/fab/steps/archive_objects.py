@@ -109,15 +109,15 @@ def archive_objects(config: BuildConfig,
     ar = config.tool_box[Category.AR]
     if not isinstance(ar, Ar):
         raise FabToolMismatch(ar.name, type(ar), "Ar")
-    output_fpath = str(output_fpath) if output_fpath else None
+    # output_fpath = str(output_fpath) if output_fpath else None
 
     target_objects = source_getter(config.artefact_store)
     assert target_objects.keys()
     if output_fpath and list(target_objects.keys()) != [None]:
-        raise ValueError("You must not specify an output path (library) when "
-                         "there are root symbols (executables)")
+        raise AssertionError("output path cannot be specified for an executable")
+
     if not output_fpath and list(target_objects.keys()) == [None]:
-        raise ValueError("You must specify an output path when building a library.")
+        raise AssertionError("output path must be specified for a library")
 
     for root, objects in target_objects.items():
 

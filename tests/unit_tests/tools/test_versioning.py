@@ -22,7 +22,7 @@ from tests.conftest import (ExtendedRecorder,
 from fab.tools.category import Category
 from fab.tools.versioning import Fcm, Git, Subversion
 
-from fab.errors import FabCommandError
+from fab.errors import FabCommandError, FabSourceMergeError
 
 
 class TestGit:
@@ -132,10 +132,8 @@ class TestGit:
             ['git', 'fetch', '/src', 'revision'], returncode=1
         )
         git = Git()
-        with raises(RuntimeError) as err:
+        with raises(FabCommandError):
             git.fetch("/src", "/dst", revision="revision")
-        assert isinstance(err.value, FabCommandError)
-        assert str(err.value) == "command 'git fetch /src revision' returned 1"
         assert call_list(fake_process) == [
             ['git', 'fetch', "/src", "revision"]
         ]
@@ -165,10 +163,8 @@ class TestGit:
         )
 
         git = Git()
-        with raises(RuntimeError) as err:
+        with raises(FabCommandError):
             git.checkout("/src", "/dst", revision="revision")
-        assert isinstance(err.value, FabCommandError)
-        assert str(err.value) == "command 'git fetch /src revision' returned 1"
         assert call_list(fake_process) == [
             ['git', 'fetch', "/src", "revision"]
         ]
@@ -196,11 +192,8 @@ class TestGit:
         abort_record = fake_process.register(['git', 'merge', '--abort'])
 
         git = Git()
-        with raises(RuntimeError) as err:
+        with raises(FabSourceMergeError):
             git.merge("/dst", revision="revision")
-        assert str(err.value).startswith(
-            "[git] merge of revision failed:"
-        )
         assert call_list(fake_process) == [
             ['git', 'merge', 'FETCH_HEAD'],
             ['git', 'merge', '--abort']
@@ -218,9 +211,8 @@ class TestGit:
                                              returncode=1)
 
         git = Git()
-        with raises(RuntimeError) as err:
+        with raises(FabCommandError):
             git.merge("/dst", revision="revision")
-        assert str(err.value).startswith("command 'git merge")
         assert call_list(fake_process) == [
             ['git', 'merge', 'FETCH_HEAD'],
             ['git', 'merge', '--abort']

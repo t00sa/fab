@@ -18,7 +18,7 @@ from fab.tools.category import Category
 from fab.tools.flags import ProfileFlags
 from fab.tools.tool import CompilerSuiteTool, Tool
 
-from fab.errors import FabCommandError, FabCommandNotFound
+from fab.errors import FabCommandError, FabCommandNotFound, FabToolNotAvailable
 
 
 def test_constructor() -> None:
@@ -89,9 +89,8 @@ def test_is_not_available(fake_process: FakeProcess) -> None:
 
     # When we try to run something with this tool, we should get
     # an exception now:
-    with raises(RuntimeError) as err:
+    with raises(FabToolNotAvailable):
         tool.run("--ops")
-    assert ("[gfortran] not available" in str(err.value))
 
 
 def test_availability_argument(fake_process: FakeProcess) -> None:
@@ -111,17 +110,15 @@ def test_run_missing(fake_process: FakeProcess) -> None:
     """
     fake_process.register(['stool', '--ops'], callback=not_found_callback)
     tool = Tool("some tool", "stool", Category.MISC)
-    with raises(RuntimeError) as err:
+    with raises(FabCommandNotFound):
         tool.run("--ops")
-    assert isinstance(err.value, FabCommandNotFound)
-    assert str(err.value) == "unable to execute stool"
 
     # Check that stdout and stderr is returned
     fake_process.register(['stool', '--ops'], returncode=1,
                           stdout="this is stdout",
                           stderr="this is stderr")
     tool = Tool("some tool", "stool", Category.MISC)
-    with raises(RuntimeError) as err:
+    with raises(FabCommandError) as err:
         tool.run("--ops")
     assert isinstance(err.value, FabCommandError)
     assert "this is stdout" in str(err.value.output)
@@ -203,10 +200,8 @@ class TestToolRun:
         """
         fake_process.register(['tool'], returncode=1, stdout="Beef.")
         tool = Tool("some tool", "tool", Category.MISC)
-        with raises(RuntimeError) as err:
+        with raises(FabCommandError) as err:
             tool.run()
-        assert isinstance(err.value, FabCommandError)
-        assert str(err.value) == "command 'tool' returned 1"
         assert err.value.code == 1
         assert err.value.output == "Beef."
         assert err.value.error == ""
@@ -219,10 +214,8 @@ class TestToolRun:
         """
         fake_process.register(['tool'], callback=not_found_callback)
         tool = Tool('some tool', 'tool', Category.MISC)
-        with raises(RuntimeError) as err:
+        with raises(FabCommandNotFound):
             tool.run()
-        assert isinstance(err.value, FabCommandNotFound)
-        assert str(err.value) == "unable to execute tool"
         assert call_list(fake_process) == [['tool']]
 
 

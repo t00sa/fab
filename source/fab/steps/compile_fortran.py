@@ -25,7 +25,7 @@ from fab.tools import Category, Compiler, Flags
 from fab.util import (CompiledFile, log_or_dot_finish, log_or_dot, Timer,
                       by_type, file_checksum)
 
-from fab.errors import FabToolMismatch
+from fab.errors import FabToolMismatch, FabHashError, FabError
 
 logger = logging.getLogger(__name__)
 
@@ -207,13 +207,7 @@ def get_compile_next(compiled: Dict[Path, CompiledFile],
 
     # unable to compile anything?
     if len(uncompiled) and not compile_next:
-        msg = 'Nothing more can be compiled due to unfulfilled dependencies:\n'
-        for f, unf in not_ready.items():
-            msg += f'\n\n{f}'
-            for u in unf:
-                msg += f'\n    {str(u)}'
-
-        raise ValueError(msg)
+        raise FabError(f"remaining {len(not_ready)} items not ready for compilation")
 
     return compile_next
 
@@ -357,8 +351,8 @@ def _get_obj_combo_hash(config: BuildConfig,
             compiler.get_hash(config.profile),
         ])
     except TypeError as err:
-        raise ValueError("Could not generate combo hash "
-                         "for object file") from err
+        raise FabHashError(analysed_file.fpath) from err
+
     return obj_combo_hash
 
 
@@ -370,8 +364,8 @@ def _get_mod_combo_hash(config, analysed_file, compiler: Compiler):
             compiler.get_hash(config.profile),
         ])
     except TypeError as err:
-        raise ValueError("Could not generate combo "
-                         "hash for mod files") from err
+        raise FabHashError(analysed_file.fpath) from err
+
     return mod_combo_hash
 
 

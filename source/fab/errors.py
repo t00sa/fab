@@ -39,13 +39,11 @@ class FabToolError(FabError):
     def __init__(self, tool: Union["Category", "Tool", str], message: str) -> None:
         self.tool = tool
 
-        # Check for name attributes rather than using isintance
-        # because Category and Tool ahve issues with circular
+        # Check for name attributes rather than using isinstance
+        # because Category and Tool have issues with circular
         # dependencies
         if hasattr(tool, "name"):
             self.name = tool.name
-        elif hasattr(tool, "_name"):
-            self.name = tool._name
         else:
             self.name = tool
         super().__init__(f"[{self.name}] {message}")
@@ -145,11 +143,13 @@ class FabToolNotAvailable(FabToolError):
     """
 
     def __init__(
-        self, tool: Union["Category", "Tool", str], suite: Optional[str] = None
+        self,
+        tool: Union["Category", "Tool", str],
+        suite: Optional[Union["Category", str]] = None,
     ) -> None:
         message = "not available"
         if suite:
-            message += f" in suite {suite}"
+            message += f" in {suite}"
         super().__init__(tool, message)
 
 
@@ -163,8 +163,6 @@ class FabToolInvalidSetting(FabToolError):
     :param tool: the tool to which setting applies
     :param additional: optional additional information
     """
-
-    # FIXME: improve these here and in tool_repository
 
     def __init__(
         self,
@@ -192,7 +190,7 @@ class FabUnknownLibraryError(FabError):
 
     def __init__(self, library: str) -> None:
         self.library = library
-        super().__init__(f"unknown library {library}")
+        super().__init__(f"unknown library {repr(library)}")
 
 
 class FabCommandError(FabError):
@@ -225,7 +223,7 @@ class FabCommandError(FabError):
         self.output = self._decode(output)
         self.error = self._decode(error)
         self.cwd = cwd
-        super().__init__(f"command {repr(self.command)} returned {code}")
+        super().__init__(f"return code {code} from {repr(self.command)}")
 
     def _decode(self, value: Union[str, bytes, None]) -> str:
         """Convert from bytes to a string as necessary."""
@@ -256,7 +254,7 @@ class FabCommandNotFound(FabError):
         else:
             raise ValueError(f"invalid command: {command}")
 
-        super().__init__(f"unable to execute {self.target}")
+        super().__init__(f"unable to execute {repr(self.target)}")
 
 
 class FabMultiCommandError(FabError):
@@ -322,7 +320,7 @@ class FabSourceMergeError(FabSourceError):
 
         message = f"[{tool}] merge "
         if revision:
-            message += f"of {revision} "
+            message += f"of {repr(revision)} "
         message += f"failed: {reason}"
 
         super().__init__(message)
@@ -344,7 +342,7 @@ class FabSourceFetchError(FabSourceError):
         super().__init__(f"could not fetch {source}: {reason}")
 
 
-class FabParseError(FabError):
+class FabAnalysisError(FabError):
     """Error while parsing or analysing source code."""
 
     def __init__(self, message, fpath=None, lineno=None):
@@ -355,3 +353,27 @@ class FabParseError(FabError):
                 message += f":{lineno}"
             message += ")"
         super().__init__(message)
+
+
+class FabFileLoadError(FabError):
+    """Error loading a FabFile."""
+
+    def __init__(self, message, fpath):
+        super().__init__(message)
+        self.fpath = fpath
+
+
+class FabProfileError(FabError):
+    """Error when an invalid profile is provided."""
+
+    def __init__(self, message, profile):
+        super().__init__(f"profile {repr(profile)} {message}")
+        self.profile = profile
+
+
+class FabHashError(FabError):
+    """Error creating a file combination hash."""
+
+    def __init__(self, fpath):
+        super().__init__(f"failed to create hash for {fpath}")
+        self.fpath = fpath

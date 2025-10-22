@@ -37,8 +37,8 @@ def _get_revision(src, revision=None) -> Tuple[str, Union[str, None]]:
     if len(at_split) == 2:
         url_revision = at_split[1]
         if url_revision and revision and url_revision != revision:
-            raise ValueError('Conflicting revisions in url and argument. '
-                             'Please provide as argument only.')
+            raise AssertionError('conflicting revisions in URL and argument')
+
         src = at_split[0]
     else:
         assert len(at_split) == 1

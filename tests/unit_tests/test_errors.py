@@ -8,6 +8,7 @@ Unit tests for custom fab exceptions.
 """
 
 import pytest
+from pathlib import Path
 from unittest.mock import Mock, PropertyMock
 
 from fab.errors import (
@@ -18,8 +19,11 @@ from fab.errors import (
     FabToolPsycloneAPI,
     FabToolNotAvailable,
     FabToolInvalidSetting,
+    FabAnalysisError,
     FabCommandError,
     FabCommandNotFound,
+    FabFileLoadError,
+    FabHashError,
     FabMultiCommandError,
     FabSourceNoFilesError,
     FabSourceMergeError,
@@ -41,7 +45,27 @@ class TestErrors:
         """Test unknown library errors."""
 
         err = FabUnknownLibraryError("mylib")
-        assert str(err) == "unknown library mylib"
+        assert str(err) == "unknown library 'mylib'"
+
+    @pytest.mark.parametrize(
+        "fpath,lineno,message",
+        [
+            (None, None, "test message"),
+            (Path("/tmp/myfile.f90"), None, "test message (myfile.f90)"),
+            (Path("/tmp/myfile.f90"), 2, "test message (myfile.f90:2)"),
+        ],
+        ids=["message only", "fpath", "fpath+lineno"],
+    )
+    def test_fab_analysis_error(self, fpath, lineno, message):
+        """Test analsys/parse errors."""
+
+        err = FabAnalysisError("test message", fpath, lineno)
+        assert str(err) == message
+
+    def test_fab_file_load_error(self):
+
+        err = FabFileLoadError("test message", Path("/tmp/FabFile"))
+        assert str(err) == "test message"
 
 
 class TestToolErrors:
@@ -55,11 +79,6 @@ class TestToolErrors:
 
         # Mock defines an internal name property, so special handling
         # is required to reset the value to support testing
-        tool = Mock(_name="tool cc")
-        del tool.name
-        err = FabToolError(tool, "compiler message")
-        assert str(err) == "[tool cc] compiler message"
-
         category = Mock()
         del category._name
         type(category).name = PropertyMock(return_value="category cc")
@@ -100,7 +119,7 @@ class TestToolErrors:
         assert str(err) == "[psyclone] not available"
 
         err = FabToolNotAvailable("gfortran", "GCC")
-        assert str(err) == "[gfortran] not available in suite GCC"
+        assert str(err) == "[gfortran] not available in GCC"
 
     def test_invalid_setting(self):
         """Test invalid setting class."""
@@ -119,19 +138,19 @@ class TestCommandErrors:
         """Test FabCommandError in various configurations."""
 
         err = FabCommandError(["ls", "-l", "/nosuch"], 1, b"", b"ls: cannot", "/")
-        assert str(err) == "command 'ls -l /nosuch' returned 1"
+        assert str(err) == "return code 1 from 'ls -l /nosuch'"
 
         err = FabCommandError("ls -l /nosuch", 1, None, "ls: cannot", "/")
-        assert str(err) == "command 'ls -l /nosuch' returned 1"
+        assert str(err) == "return code 1 from 'ls -l /nosuch'"
 
     def test_not_found(self):
         """Test command not found errors."""
 
         err = FabCommandNotFound(["ls", "-l"])
-        assert str(err) == "unable to execute ls"
+        assert str(err) == "unable to execute 'ls'"
 
         err = FabCommandNotFound("ls -l")
-        assert str(err) == "unable to execute ls"
+        assert str(err) == "unable to execute 'ls'"
 
         with pytest.raises(ValueError) as exc:
             FabCommandNotFound({"a": 1})
@@ -170,10 +189,19 @@ class TestSourceErrors:
         assert str(err) == "[git] merge failed: conflicting source files"
 
         err = FabSourceMergeError("git", "conflicting source files", "vn1.1")
-        assert str(err) == "[git] merge of vn1.1 failed: conflicting source files"
+        assert str(err) == "[git] merge of 'vn1.1' failed: conflicting source files"
 
     def test_fetch(self):
         """Test fetch errors."""
 
         err = FabSourceFetchError("/my/dir1", "no such directory")
         assert str(err) == "could not fetch /my/dir1: no such directory"
+
+
+class TestAnalyse:
+    """Test analyse and source processing exceptions."""
+
+    def test_hash(self):
+
+        err = FabHashError(Path("/abc/test.f90"))
+        assert str(err) == "failed to create hash for /abc/test.f90"

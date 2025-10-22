@@ -131,7 +131,7 @@ class ArtefactStore(dict):
         art_set = self[artefact]
         if not isinstance(art_set, set):
             name = artefact if isinstance(artefact, str) else artefact.name
-            raise ValueError(f"{name} is not mutable")
+            raise AssertionError(f"{name} is not mutable")
         art_set.difference_update(set(remove_files))
         art_set.update(add_files)
 

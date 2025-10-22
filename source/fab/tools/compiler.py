@@ -207,7 +207,7 @@ class Compiler(CompilerSuiteTool):
         :returns: a tuple of at least 2 integers, representing the version
             e.g. (6, 10, 1) for version '6.10.1'.
 
-        :raises RuntimeError: if the compiler was not found, or if it returned
+        :raises FabToolInvalidVersion: if the compiler was not found, or if it returned
             an unrecognised output from the version command.
         """
         if self._version is not None:
@@ -252,7 +252,7 @@ class Compiler(CompilerSuiteTool):
 
         :returns: The output from the version command.
 
-        :raises RuntimeError: if the compiler was not found, or raised an
+        :raises FabToolInvalidVersion: if the compiler was not found, or raised an
             error.
         '''
         try:
@@ -267,7 +267,7 @@ class Compiler(CompilerSuiteTool):
         :returns: a string of at least 2 numeric version components,
             i.e. major.minor[.patch, ...]
 
-        :raises RuntimeError: if the compiler was not found, or if it returned
+        :raises FabToolInvalidVersion: if the compiler was not found, or if it returned
             an unrecognised output from the version command.
         """
         version = self.get_version()

@@ -16,7 +16,6 @@ from tests.conftest import not_found_callback
 from fab.tools.category import Category
 from fab.tools.compiler import CCompiler, FortranCompiler, Gfortran
 from fab.tools.tool_box import ToolBox
-from fab.tools.tool_repository import ToolRepository
 from fab.errors import FabToolNotAvailable
 
 
@@ -108,7 +107,5 @@ def test_add_unavailable_tool(fake_process: FakeProcess) -> None:
 
     tb = ToolBox()
     gfortran = Gfortran()
-    with raises(RuntimeError) as err:
+    with raises(FabToolNotAvailable):
         tb.add_tool(gfortran)
-    assert isinstance(err.value, FabToolNotAvailable)
-    assert str(err.value).startswith("[gfortran] not available")

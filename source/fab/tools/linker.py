@@ -34,9 +34,6 @@ class Linker(CompilerSuiteTool):
     :param compiler: a compiler instance
     :param linker: an optional linker instance
     :param name: name of the linker
-
-    :raises RuntimeError: if both compiler and linker are specified.
-    :raises RuntimeError: if neither compiler nor linker is specified.
     '''
 
     def __init__(self, compiler: Compiler,
@@ -136,7 +133,7 @@ class Linker(CompilerSuiteTool):
 
         :returns: a list of flags
 
-        :raises RuntimeError: if lib is not recognised
+        :raises FabUnknownLibraryError: if lib is not recognised
         '''
         try:
             return self._lib_flags[lib]

@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Generator, Pattern, Optional, Match
 
-from fab.errors import FabParseError
+from fab.errors import FabAnalysisError
 from fab.artefacts import ArtefactSet, ArtefactsGetter, SuffixFilter
 from fab.steps import run_mp, step
 
@@ -90,6 +90,6 @@ def inject_pragmas(fpath) -> Generator:
                 yield line
                 yield '#pragma FAB UsrIncludeEnd\n'
             else:
-                raise FabParseError("Badly formatted #include", fpath, i)
+                raise FabAnalysisError("Badly formatted #include", fpath, i)
         else:
             yield line
