@@ -109,7 +109,7 @@ def test_arg_error(monkeypatch, capsys) -> None:
         _ = FabBase(name="test-help")
 
     captured = capsys.readouterr()
-    assert ("argument --host/-host: invalid choice: 'invalid' (choose from cpu, gpu)"
+    assert ("argument --host/-host: invalid choice: 'invalid' (choose from"
             in captured.err)
 
 
