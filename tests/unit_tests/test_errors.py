@@ -140,9 +140,6 @@ class TestCommandErrors:
         err = FabCommandError(["ls", "-l", "/nosuch"], 1, b"", b"ls: cannot", "/")
         assert str(err) == "return code 1 from 'ls -l /nosuch'"
 
-        err = FabCommandError("ls -l /nosuch", 1, None, "ls: cannot", "/")
-        assert str(err) == "return code 1 from 'ls -l /nosuch'"
-
     def test_not_found(self):
         """Test command not found errors."""
 
@@ -185,10 +182,13 @@ class TestSourceErrors:
     def test_merge(self):
         """Test merge errors."""
 
-        err = FabSourceMergeError("git", "conflicting source files")
+        tool = Mock()
+        type(tool).name = PropertyMock(return_value="git")
+
+        err = FabSourceMergeError(tool, "conflicting source files")
         assert str(err) == "[git] merge failed: conflicting source files"
 
-        err = FabSourceMergeError("git", "conflicting source files", "vn1.1")
+        err = FabSourceMergeError(tool, "conflicting source files", "vn1.1")
         assert str(err) == "[git] merge of 'vn1.1' failed: conflicting source files"
 
     def test_fetch(self):

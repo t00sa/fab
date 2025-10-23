@@ -109,7 +109,7 @@ class Git(Versioning):
             self.run(['merge', 'FETCH_HEAD'], cwd=dst, capture_output=False)
         except RuntimeError as err:
             self.run(['merge', '--abort'], cwd=dst, capture_output=False)
-            raise FabSourceMergeError("git", str(err), revision) from err
+            raise FabSourceMergeError(self, str(err), revision) from err
 
 
 # =============================================================================

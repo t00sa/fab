@@ -125,6 +125,6 @@ def check_conflict(tool: Versioning, dst: Union[str, Path]):
             for element in entry:
                 if (element.tag == 'wc-status' and
                         element.attrib['item'] == 'conflicted'):
-                    raise FabSourceMergeError("svn", xml_str)
+                    raise FabSourceMergeError(tool, xml_str)
 
     return False

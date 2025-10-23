@@ -61,14 +61,14 @@ class FabToolMismatch(FabToolError):
 
     def __init__(
         self,
-        tool: Union["Category", "Tool", str],
-        category: Union["Category", "Tool", type, str],
+        toolname: str,
+        category: Union["Category", "Tool", type],
         expected: str,
     ) -> None:
         self.category = category
         self.expected = expected
 
-        super().__init__(tool, f"got type {category} instead of {expected}")
+        super().__init__(toolname, f"got type {category} instead of {expected}")
 
 
 class FabToolInvalidVersion(FabToolError):
@@ -85,7 +85,7 @@ class FabToolInvalidVersion(FabToolError):
 
     def __init__(
         self,
-        tool: Union["Category", "Tool", str],
+        toolname: str,
         value: str,
         expected: Optional[str] = None,
     ) -> None:
@@ -96,7 +96,7 @@ class FabToolInvalidVersion(FabToolError):
         if expected is not None:
             message += f" should be {repr(expected)}"
 
-        super().__init__(tool, message)
+        super().__init__(toolname, message)
 
 
 class FabToolPsycloneAPI(FabToolError):
@@ -167,7 +167,7 @@ class FabToolInvalidSetting(FabToolError):
     def __init__(
         self,
         setting_type: str,
-        tool: Union["Category", "Tool", str],
+        category: Union["Category", str],
         additional: Optional[str] = None,
     ) -> None:
         self.setting_type = setting_type
@@ -176,7 +176,7 @@ class FabToolInvalidSetting(FabToolError):
         if additional:
             message += f" {additional}"
 
-        super().__init__(tool, message)
+        super().__init__(category, message)
 
 
 class FabUnknownLibraryError(FabError):
@@ -209,16 +209,13 @@ class FabCommandError(FabError):
 
     def __init__(
         self,
-        command: str,
+        command: List[str],
         code: int,
         output: Union[str, bytes, None],
         error: Union[str, bytes, None],
-        cwd: Optional[Union[str, Path]] = None,
+        cwd: Optional[Union[Path, str]] = None,
     ) -> None:
-        if isinstance(command, list):
-            self.command: str = " ".join(command)
-        else:
-            self.command = str(command)
+        self.command: str = " ".join(command)
         self.code = int(code)
         self.output = self._decode(output)
         self.error = self._decode(error)
@@ -245,7 +242,7 @@ class FabCommandNotFound(FabError):
         preserved for inspection by the caller.
     """
 
-    def __init__(self, command: str) -> None:
+    def __init__(self, command: Union[List[str], str]) -> None:
         self.command = command
         if isinstance(command, list):
             self.target: str = command[0]
@@ -271,9 +268,7 @@ class FabMultiCommandError(FabError):
     :param label: an identifier for the multiprocessing section
     """
 
-    def __init__(
-        self, errors: List[Union[str, Exception]], label: Optional[str] = None
-    ) -> None:
+    def __init__(self, errors: List[Exception], label: Optional[str] = None) -> None:
         self.errors = errors
         self.label = label or "during multiprocessing"
 
@@ -314,11 +309,13 @@ class FabSourceMergeError(FabSourceError):
         targeted
     """
 
-    def __init__(self, tool: str, reason: str, revision: Optional[str] = None) -> None:
+    def __init__(
+        self, tool: "Tool", reason: str, revision: Optional[str] = None
+    ) -> None:
         self.tool = tool
         self.reason = reason
 
-        message = f"[{tool}] merge "
+        message = f"[{tool.name}] merge "
         if revision:
             message += f"of {repr(revision)} "
         message += f"failed: {reason}"
