@@ -264,8 +264,8 @@ class FabMultiCommandError(FabError):
     multiprocessing section into a single exception class for
     subsequent inspection.
 
-    This feature is is required because versions of python prior to
-    3.11 do not support ExceptionGroups.
+    This feature is required because versions of python prior to
+    3.11 do not support ExceptionGroups.  See issue #513 on github.
 
     :param errors: a list ot exceptions
     :param label: an identifier for the multiprocessing section
